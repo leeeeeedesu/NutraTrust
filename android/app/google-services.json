@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1031318034346",
+    "project_id": "e-commerce-92163",
+    "storage_bucket": "e-commerce-92163.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1031318034346:android:f5c856eb258749683c7dd3",
+        "android_client_info": {
+          "package_name": "com.example.nutratrust"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAPOy3HD0HySLO4T29zMeaP_fHvaOfw3KU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
