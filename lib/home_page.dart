@@ -1,8 +1,14 @@
 import 'package:flutter/material.dart';
-import 'likes_page.dart';
-import 'profile_page.dart';
 import 'shoppingcart_page.dart';
+import 'services/like_service.dart';
+import 'likes_page.dart';
+import 'product.dart';
+import 'profile_page.dart';
+import 'services/realtime_database_service.dart';
 import 'trackorders_page.dart';
+import 'search_page.dart';
+import 'widgets/product_list.dart';
+import 'widgets/app_bottom_nav.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -14,28 +20,13 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
 
-  final List<Map<String, String>> products = [
-    {
-      "name": "GOLD STANDARD 100% WHEY™",
-      "description": "73 Serving GOLD STANDARD 100% WHEY™",
-      "image": "assets/wheygold.png",
-    },
-    {
-      "name": "Gold Standard Isolate Whey Protein Powder",
-      "description": "44 Serving GOLD STANDARD 100% WHEY™",
-      "image": "assets/wheyisolate.png",
-    },
-    {
-      "name": "Micronized Creatine Powder",
-      "description": "60 Serving Micronized CREATINE 100%",
-      "image": "assets/creatine.png",
-    },
-    {
-      "name": "Opti-Lock™ Shaker Bundle",
-      "description": "10 Serving GOLD STANDARD 100% WHEY™",
-      "image": "assets/shakerbundle.png",
-    },
-  ];
+  @override
+  void initState() {
+    super.initState();
+    LikeService.loadLikedProductsFromDatabase().then((_) {
+      if (mounted) setState(() {});
+    });
+  }
 
   void _onItemTapped(int index) {
     setState(() {
@@ -94,23 +85,33 @@ class _HomePageState extends State<HomePage> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   // Search bar
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF028B22),
-                      borderRadius: BorderRadius.circular(30),
-                    ),
-                    child: TextField(
-                      decoration: InputDecoration(
-                        hintText: 'Search',
-                        hintStyle: const TextStyle(color: Colors.white70),
-                        prefixIcon: const Icon(
-                          Icons.search,
-                          color: Colors.white70,
-                        ),
-                        border: InputBorder.none,
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const SearchPage()),
+                      );
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF028B22),
+                        borderRadius: BorderRadius.circular(30),
                       ),
-                      style: const TextStyle(color: Colors.white),
+                      child: TextField(
+                        enabled:
+                            false, // Disable typing, only tap to open search
+                        decoration: InputDecoration(
+                          hintText: 'Search',
+                          hintStyle: const TextStyle(color: Colors.white70),
+                          prefixIcon: const Icon(
+                            Icons.search,
+                            color: Colors.white70,
+                          ),
+                          border: InputBorder.none,
+                        ),
+                        style: const TextStyle(color: Colors.white),
+                      ),
                     ),
                   ),
 
@@ -124,78 +125,15 @@ class _HomePageState extends State<HomePage> {
                   const SizedBox(height: 18),
 
                   // Product grid
-                  GridView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          mainAxisSpacing: 18,
-                          crossAxisSpacing: 18,
-                          childAspectRatio: 0.72,
-                        ),
-                    itemCount: products.length,
-                    itemBuilder: (context, index) {
-                      final product = products[index];
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Expanded(
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: const Color(0xFFE8E8E8),
-                                ),
-                                boxShadow: const [
-                                  BoxShadow(
-                                    color: Color(0x11000000),
-                                    blurRadius: 6,
-                                    offset: Offset(0, 2),
-                                  ),
-                                ],
-                              ),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(12),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(8.0),
-                                  child: Image.asset(
-                                    product['image']!,
-                                    fit: BoxFit.contain,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-
-                          const SizedBox(height: 8),
-
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                color: const Color(0xFFBEE6C9),
-                              ),
-                              color: const Color(0xFFF7FFFA),
-                            ),
-                            child: Text(
-                              product['name']!,
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                color: Color(0xFF1E8B3A),
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                              ),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
+                  StreamBuilder<List<Product>>(
+                    stream: RealtimeDatabaseService.productsStream(),
+                    builder: (context, snapshot) {
+                      return ProductList(
+                        products: snapshot.data ?? [],
+                        isLoading:
+                            snapshot.connectionState == ConnectionState.waiting,
+                        hasError: snapshot.hasError,
+                        errorMessage: snapshot.error?.toString(),
                       );
                     },
                   ),
@@ -208,25 +146,42 @@ class _HomePageState extends State<HomePage> {
         ),
       ),
       //bttom navigation bar
-      bottomNavigationBar: BottomNavigationBar(
+      bottomNavigationBar: AppBottomNavigationBar(
         currentIndex: _selectedIndex,
-        selectedItemColor: const Color(0xFF1E8B3A),
-        unselectedItemColor: Colors.grey,
         onTap: _onItemTapped,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
-          BottomNavigationBarItem(icon: Icon(Icons.favorite), label: "Likes"),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.card_giftcard),
-            label: "Track Orders",
+      ),
+    );
+  }
+}
+
+class _OptionButton extends StatelessWidget {
+  const _OptionButton({required this.label, required this.onTap});
+
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: const Color(0xFFF2F8F2),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: const Color(0xFFCBDCC4)),
+        ),
+        child: Center(
+          child: Text(
+            label,
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF028B22),
+            ),
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.shopping_cart),
-            label: "Shopping Cart",
-          ),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
-        ],
-        type: BottomNavigationBarType.fixed,
+        ),
       ),
     );
   }

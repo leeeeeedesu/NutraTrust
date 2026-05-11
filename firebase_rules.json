@@ -1,0 +1,100 @@
+{
+  "rules": {
+    "products": {
+      ".read": "auth != null",
+      ".write": "root.child('users').child(auth.uid).child('role').val() === 'admin'",
+      "$productId": {
+        ".validate": "newData.hasChildren(['name', 'price', 'stock'])",
+        "stock": {
+          ".write": "root.child('users').child(auth.uid).child('role').val() === 'admin' || (newData.val() <= data.val())",
+          ".validate": "newData.isNumber() && newData.val() >= 0"
+        },
+        "name": { ".validate": "newData.isString() && newData.val().length > 0" },
+        "price": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+        "description": { ".validate": "newData.isString() || !newData.exists()" },
+        "category": { ".validate": "newData.isString() || !newData.exists()" },
+        "imageUrl": { ".validate": "newData.isString() || !newData.exists()" },
+        "brand": { ".validate": "newData.isString() || !newData.exists()" },
+        "flavors": { ".validate": "newData.isString() || newData.isNumber() || newData.hasChildren() || !newData.exists()" }
+      }
+    },
+    "likes": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      "$uid": {
+        ".read": "auth.uid === $uid || root.child('users').child(auth.uid).child('role').val() === 'admin'",
+        ".write": "auth.uid === $uid",
+        "$productId": { ".validate": "newData.isBoolean() || !newData.exists()" }
+      }
+    },
+    "reviews": {
+      ".read": "auth != null",
+      "$reviewId": {
+        ".write": "auth != null && (
+          (newData.child('userId').val() === auth.uid &&
+           root.child('orders').child(newData.child('orderId').val()).child('userId').val() === auth.uid &&
+           root.child('orders').child(newData.child('orderId').val()).child('status').val() === 'Delivered')
+          || (data.exists() && root.child('users').child(auth.uid).child('role').val() === 'admin')
+        )",
+        ".validate": "newData.hasChildren(['userId','orderId','productId','rating'])",
+        "userId": { ".validate": "newData.isString() && (newData.val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin')" },
+        "orderId": { ".validate": "newData.isString()" },
+        "productId": { ".validate": "newData.isString()" },
+        "rating": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 5" },
+        "comment": { ".validate": "newData.isString() || !newData.exists()" },
+        "productName": { ".validate": "newData.isString() || !newData.exists()" },
+        "timestamp": { ".validate": "newData.isNumber() || !newData.exists()" }
+      }
+    },
+    "users": {
+      ".read": "root.child('users').child(auth.uid).child('role').val() === 'admin'",
+      ".write": "root.child('users').child(auth.uid).child('role').val() === 'admin'",
+      "$uid": {
+        ".read": "auth.uid === $uid || root.child('users').child(auth.uid).child('role').val() === 'admin'",
+        ".write": "auth.uid === $uid || root.child('users').child(auth.uid).child('role').val() === 'admin'",
+        "uid": {
+          ".validate": "newData.isString() && newData.val() === $uid"
+        },
+        "email": {
+          ".validate": "newData.isString() && newData.val().contains('@')"
+        },
+        "role": {
+          ".validate": "newData.isString() && (newData.val() === 'customer' || newData.val() === 'admin' || newData.val() === 'mega_admin')"
+        },
+        "isActive": {
+          ".validate": "newData.isBoolean()"
+        },
+        "profileImage": {
+          ".validate": "newData.isString() || !newData.exists()"
+        },
+        "createdAt": {
+          ".validate": "newData.isString() || newData.isNumber() || !newData.exists()"
+        }
+      }
+    },
+    "customers": {
+      ".read": "root.child('users').child(auth.uid).child('role').val() === 'admin'",
+      ".write": "auth != null || root.child('users').child(auth.uid).child('role').val() === 'admin'"
+    },
+    "orders": {
+      "$orderId": {
+        ".read": "auth != null && (data.child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin')",
+        ".write": "auth != null && (newData.child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin')",
+        ".validate": "newData.hasChildren(['userId','productId','quantity','totalPrice'])",
+        "userId": { ".validate": "newData.isString()" },
+        "productId": { ".validate": "newData.isString()" },
+        "quantity": { 
+          ".validate": "newData.isNumber() && newData.val() > 0 && newData.val() <= root.child('products').child(newData.parent.child('productId').val()).child('stock').val()"
+        },
+        "totalPrice": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+        "status": { ".validate": "newData.isString() || !newData.exists()" },
+        "reviewed": { ".validate": "newData.isBoolean()" },
+        "messageForSeller": { ".validate": "newData.isString() || !newData.exists()" },
+        "voucherCode": { ".validate": "newData.isString() || !newData.exists()" },
+        "timestamp": { ".validate": "newData.isNumber() || !newData.exists()" }
+      }
+    },
+    ".read": "false",
+    ".write": "false"
+  }
+}

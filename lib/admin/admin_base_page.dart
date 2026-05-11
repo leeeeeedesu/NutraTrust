@@ -1,9 +1,22 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import '../services/realtime_database_service.dart';
 import 'admin_settings.dart';
+import 'admin_dashboard.dart';
+import '../home_page.dart';
 
-enum AdminPage { dashboard, manageProduct, userLists }
+//to add pages
+enum AdminPage {
+  dashboard,
+  manageProduct,
+  userLists,
+  reviews,
+  inventory,
+  delivery,
+}
 
+//Navigation
 class AdminBasePage extends StatelessWidget {
   const AdminBasePage({
     super.key,
@@ -11,17 +24,50 @@ class AdminBasePage extends StatelessWidget {
     required this.onDashboardTap,
     required this.onManageProductTap,
     required this.onUserListsTap,
+    required this.onReviewsTap,
+    required this.onInventoryTap,
+    required this.onDeliveryTap,
     required this.body,
   });
-
+  //functions for navigation
   final AdminPage activePage;
   final VoidCallback onDashboardTap;
   final VoidCallback onManageProductTap;
   final VoidCallback onUserListsTap;
+  final VoidCallback onReviewsTap;
+  final VoidCallback onInventoryTap;
+  final VoidCallback onDeliveryTap;
   final Widget body;
+
+  static Future<void> redirectAfterLogin(BuildContext context) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    final accountData = await RealtimeDatabaseService.getUserAccountProfile(
+      user.uid,
+    );
+    final role = accountData?['role']?.toString();
+    final isActive = accountData?['isActive'] == true;
+    debugPrint('Admin role: $role');
+    debugPrint('Active status: $isActive');
+
+    if (role == 'mega_admin' || role == 'admin') {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const AdminDashboardPage()),
+      );
+      return;
+    }
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => const HomePage()),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    final currentUser = FirebaseAuth.instance.currentUser;
     return Scaffold(
       backgroundColor: const Color(0xFFF9F9F9),
       body: SafeArea(
@@ -50,10 +96,27 @@ class AdminBasePage extends StatelessWidget {
                         ),
                       );
                     },
-                    child: const CircleAvatar(
-                      radius: 20,
-                      backgroundColor: Colors.white,
-                      child: Icon(Icons.person, color: Colors.grey),
+                    child: FutureBuilder<Map<String, dynamic>?>(
+                      future: currentUser != null
+                          ? RealtimeDatabaseService.getUserAccountProfile(
+                              currentUser.uid,
+                            )
+                          : Future.value(null),
+                      builder: (context, snapshot) {
+                        final profileImage = snapshot.data?['profileImage']
+                            ?.toString();
+                        return CircleAvatar(
+                          radius: 20,
+                          backgroundColor: Colors.white,
+                          backgroundImage:
+                              profileImage != null && profileImage.isNotEmpty
+                              ? NetworkImage(profileImage)
+                              : null,
+                          child: profileImage == null || profileImage.isEmpty
+                              ? const Icon(Icons.person, color: Colors.grey)
+                              : null,
+                        );
+                      },
                     ),
                   ),
                 ],
@@ -81,6 +144,81 @@ class AdminBasePage extends StatelessWidget {
                           fontWeight: FontWeight.bold,
                           color: Color(0xFF1F5B2A),
                         ),
+                      ),
+                      const SizedBox(height: 8),
+                      FutureBuilder<Map<String, dynamic>?>(
+                        future: currentUser != null
+                            ? RealtimeDatabaseService.getUserAccountProfile(
+                                currentUser.uid,
+                              )
+                            : Future.value(null),
+                        builder: (context, snapshot) {
+                          if (snapshot.connectionState ==
+                              ConnectionState.waiting) {
+                            return const Text(
+                              'Loading admin info...',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Color(0xFF6F6F6F),
+                              ),
+                            );
+                          }
+
+                          final email =
+                              FirebaseAuth.instance.currentUser?.email ??
+                              'Signed in as Admin';
+                          if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                            return Text(
+                              email,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Color(0xFF6F6F6F),
+                              ),
+                              textAlign: TextAlign.center,
+                            );
+                          }
+
+                          final adminData = snapshot.data!;
+                          final rawRole =
+                              adminData['role']?.toString() ?? 'unknown';
+                          final role =
+                              rawRole == 'admin' || rawRole == 'mega_admin'
+                              ? 'Admin'
+                              : rawRole;
+                          final isActive = adminData['isActive'] == true;
+                          debugPrint('Admin role: $rawRole');
+                          debugPrint('Active status: $isActive');
+                          return Column(
+                            children: [
+                              Text(
+                                email,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Color(0xFF6F6F6F),
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Role: $role',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Color(0xFF6F6F6F),
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'Status: ${isActive ? 'Active' : 'Inactive'}',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: isActive
+                                      ? const Color(0xFF2E7D32)
+                                      : const Color(0xFFB71C1C),
+                                ),
+                              ),
+                            ],
+                          );
+                        },
                       ),
                       const SizedBox(height: 8),
                       Container(
@@ -124,7 +262,11 @@ class AdminBasePage extends StatelessWidget {
                       onTap: onManageProductTap,
                     ),
                   ),
-                  const SizedBox(width: 8),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
                   Expanded(
                     child: _NavButton(
                       label: 'User Lists',
@@ -132,17 +274,33 @@ class AdminBasePage extends StatelessWidget {
                       onTap: onUserListsTap,
                     ),
                   ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _NavButton(
+                      label: 'Reviews',
+                      active: activePage == AdminPage.reviews,
+                      onTap: onReviewsTap,
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: 16),
               Row(
-                children: const [
+                children: [
                   Expanded(
-                    child: _StatusChip(label: 'INVENTORY', active: false),
+                    child: _NavButton(
+                      label: 'Inventory',
+                      active: activePage == AdminPage.inventory,
+                      onTap: onInventoryTap,
+                    ),
                   ),
-                  SizedBox(width: 8),
+                  const SizedBox(width: 8),
                   Expanded(
-                    child: _StatusChip(label: 'INVENTORY', active: false),
+                    child: _NavButton(
+                      label: 'Delivery',
+                      active: activePage == AdminPage.delivery,
+                      onTap: onDeliveryTap,
+                    ),
                   ),
                 ],
               ),
@@ -193,35 +351,7 @@ class _NavButton extends StatelessWidget {
   }
 }
 
-class _StatusChip extends StatelessWidget {
-  const _StatusChip({required this.label, required this.active});
-
-  final String label;
-  final bool active;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 42,
-      decoration: BoxDecoration(
-        color: active ? const Color(0xFF028B22) : Colors.white,
-        borderRadius: BorderRadius.circular(10.0),
-        border: Border.all(color: const Color(0xFF028B22)),
-      ),
-      child: Center(
-        child: Text(
-          label,
-          style: TextStyle(
-            color: active ? Colors.white : const Color(0xFF028B22),
-            fontWeight: FontWeight.bold,
-            fontSize: 12,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
+//PRODUCT PLACEHOLDER
 class ProductCard extends StatelessWidget {
   const ProductCard({
     super.key,
@@ -229,12 +359,16 @@ class ProductCard extends StatelessWidget {
     required this.subtitle,
     required this.price,
     required this.description,
+    this.imageUrl,
+    this.flavors,
   });
 
   final String title;
   final String subtitle;
   final String price;
   final String description;
+  final String? imageUrl;
+  final List<String>? flavors;
 
   @override
   Widget build(BuildContext context) {
@@ -256,6 +390,27 @@ class ProductCard extends StatelessWidget {
                     color: const Color(0xFFF1F1F1),
                     borderRadius: BorderRadius.circular(12.0),
                   ),
+                  child: imageUrl != null && imageUrl!.isNotEmpty
+                      ? (imageUrl!.startsWith('http')
+                            ? ClipRRect(
+                                borderRadius: BorderRadius.circular(12.0),
+                                child: Image.network(
+                                  imageUrl!,
+                                  width: 52,
+                                  height: 52,
+                                  fit: BoxFit.cover,
+                                ),
+                              )
+                            : ClipRRect(
+                                borderRadius: BorderRadius.circular(12.0),
+                                child: Image.asset(
+                                  imageUrl!,
+                                  width: 52,
+                                  height: 52,
+                                  fit: BoxFit.cover,
+                                ),
+                              ))
+                      : null,
                 ),
                 const SizedBox(width: 12),
                 Expanded(

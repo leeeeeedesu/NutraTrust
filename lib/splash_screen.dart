@@ -1,4 +1,8 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'admin/admin_dashboard.dart';
+import 'home_page.dart';
 import 'login_page.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -55,12 +59,41 @@ class _SplashScreenState extends State<SplashScreen>
       });
     });
 
-    Future.delayed(const Duration(seconds: 5), () {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const LoginPage()),
-      );
-    });
+    _checkLoginAndNavigate();
+  }
+
+  Future<void> _checkLoginAndNavigate() async {
+    await Future.delayed(const Duration(seconds: 5));
+    if (!mounted) return;
+
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) {
+      _pushToPage(const LoginPage());
+      return;
+    }
+
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser.uid)
+          .get();
+
+      final role = doc.data()?['role']?.toString();
+      if (role == 'admin') {
+        _pushToPage(const AdminDashboardPage());
+      } else if (role == 'customer') {
+        _pushToPage(const HomePage());
+      } else {
+        _pushToPage(const LoginPage());
+      }
+    } catch (_) {
+      _pushToPage(const LoginPage());
+    }
+  }
+
+  void _pushToPage(Widget page) {
+    if (!mounted) return;
+    Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => page));
   }
 
   @override

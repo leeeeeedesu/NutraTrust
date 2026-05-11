@@ -1,7 +1,10 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'home_page.dart';
 import 'shoppingcart_page.dart';
+import 'home_page.dart';
+import 'product.dart';
 import 'profile_page.dart';
+import 'services/realtime_database_service.dart';
 import 'trackorders_page.dart';
 
 class LikesPage extends StatefulWidget {
@@ -13,21 +16,6 @@ class LikesPage extends StatefulWidget {
 
 class _LikesPageState extends State<LikesPage> {
   int _selectedIndex = 1;
-
-  final List<Map<String, dynamic>> likedItems = [
-    {
-      'name': 'GOLD STANDARD® Pre-Workout',
-      'image': 'assets/wheygold.png',
-      'description': 'Pre-workout formula',
-      'liked': true,
-    },
-    {
-      'name': 'Pre-Workout Amped',
-      'image': 'assets/wheyisolate.png',
-      'description': 'Amped energy boost',
-      'liked': true,
-    },
-  ];
 
   void _onItemTapped(int index) {
     setState(() {
@@ -83,44 +71,105 @@ class _LikesPageState extends State<LikesPage> {
           },
         ),
       ),
-      body: ListView.separated(
-        padding: const EdgeInsets.all(12),
-        itemCount: likedItems.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 12),
-        itemBuilder: (context, index) {
-          final item = likedItems[index];
-          final bool isLiked = item['liked'] as bool? ?? false;
-          return Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFBEE6C9)),
-              boxShadow: const [
-                BoxShadow(
-                  color: Color(0x11000000),
-                  blurRadius: 6,
-                  offset: Offset(0, 2),
+      body: StreamBuilder<List<Product>>(
+        stream: FirebaseAuth.instance.currentUser != null
+            ? RealtimeDatabaseService.likedProductsStream(
+                FirebaseAuth.instance.currentUser!.uid,
+              )
+            : Stream.value(<Product>[]),
+        builder: (context, snapshot) {
+          final likedProducts = snapshot.data ?? <Product>[];
+          if (snapshot.hasError) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Text(
+                  'Unable to load liked products: ${snapshot.error}',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.red),
                 ),
-              ],
-            ),
-            child: ListTile(
-              leading: item['image'] != null
-                  ? Image.asset(item['image']!, width: 56, height: 56)
-                  : const SizedBox.shrink(),
-              title: Text(item['name'] ?? ''),
-              subtitle: Text(item['description'] ?? ''),
-              trailing: IconButton(
-                icon: Icon(
-                  isLiked ? Icons.favorite : Icons.favorite_border,
-                  color: isLiked ? Colors.red : Colors.grey,
-                ),
-                onPressed: () {
-                  setState(() {
-                    likedItems[index]['liked'] = !isLiked;
-                  });
-                },
               ),
-            ),
+            );
+          }
+
+          if (likedProducts.isEmpty) {
+            return const Center(
+              child: Padding(
+                padding: EdgeInsets.all(24.0),
+                child: Text(
+                  'No liked products yet. Tap the heart on a product to save it here.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.grey),
+                ),
+              ),
+            );
+          }
+
+          return ListView.separated(
+            padding: const EdgeInsets.all(12),
+            itemCount: likedProducts.length,
+            separatorBuilder: (context, index) => const SizedBox(height: 12),
+            itemBuilder: (context, index) {
+              final product = likedProducts[index];
+              return Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFBEE6C9)),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x11000000),
+                      blurRadius: 6,
+                      offset: Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: ListTile(
+                  leading: product.image != null && product.image!.isNotEmpty
+                      ? (product.image!.startsWith('http')
+                            ? Image.network(
+                                product.image!,
+                                width: 56,
+                                height: 56,
+                              )
+                            : Image.asset(
+                                product.image!,
+                                width: 56,
+                                height: 56,
+                              ))
+                      : const SizedBox.shrink(),
+                  title: Text(product.name),
+                  subtitle: Text(product.description),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.favorite, color: Colors.red),
+                    onPressed: () async {
+                      final currentUser = FirebaseAuth.instance.currentUser;
+                      if (currentUser == null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Please log in to unlike products.'),
+                          ),
+                        );
+                        return;
+                      }
+
+                      try {
+                        await RealtimeDatabaseService.unlikeProduct(
+                          uid: currentUser.uid,
+                          productId: product.id,
+                        );
+                      } catch (e) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Unable to unlike product: $e'),
+                          ),
+                        );
+                      }
+                    },
+                  ),
+                ),
+              );
+            },
           );
         },
       ),
@@ -129,18 +178,24 @@ class _LikesPageState extends State<LikesPage> {
         selectedItemColor: const Color(0xFF1E8B3A),
         unselectedItemColor: Colors.grey,
         onTap: _onItemTapped,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.favorite), label: 'Likes'),
-          BottomNavigationBarItem(
+        items: [
+          const BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+          const BottomNavigationBarItem(
+            icon: LikeBadgeIcon(child: Icon(Icons.favorite, color: Colors.red)),
+            label: 'Likes',
+          ),
+          const BottomNavigationBarItem(
             icon: Icon(Icons.card_giftcard),
             label: 'Track Orders',
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.shopping_cart),
+          const BottomNavigationBarItem(
+            icon: CartBadgeIcon(child: Icon(Icons.shopping_cart)),
             label: 'Shopping Cart',
           ),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.person),
+            label: 'Profile',
+          ),
         ],
         type: BottomNavigationBarType.fixed,
       ),

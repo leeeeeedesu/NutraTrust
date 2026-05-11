@@ -1,9 +1,180 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+
+import 'product.dart';
+import 'services/like_service.dart';
+import 'checkout_page.dart';
 import 'home_page.dart';
 import 'likes_page.dart';
 import 'profile_page.dart';
 import 'trackorders_page.dart';
 
+// ============ Cart Item Model ============
+class CartItem {
+  CartItem({
+    required this.product,
+    required this.size,
+    required this.flavor,
+    required this.quantity,
+  }) : id = [product.id, size, flavor].join('_'),
+       price = product.price.toDouble();
+
+  final String id;
+  final Product product;
+  final String size;
+  final String flavor; // Flavor name from product.flavors
+  final double price;
+  int quantity;
+
+  double get total => price * quantity;
+}
+
+// ============ Cart Service ============
+class CartService {
+  static final List<CartItem> _items = [];
+  static final ValueNotifier<int> itemCountNotifier = ValueNotifier<int>(0);
+
+  static List<CartItem> get items => List.unmodifiable(_items);
+
+  static int get totalQuantity =>
+      _items.fold(0, (sum, item) => sum + item.quantity);
+
+  static void _updateCount() {
+    itemCountNotifier.value = totalQuantity;
+  }
+
+  static void addItem({
+    required Product product,
+    required String size,
+    required String flavor,
+    required int quantity,
+  }) {
+    final existingIndex = _items.indexWhere(
+      (item) =>
+          item.product.id == product.id &&
+          item.size == size &&
+          item.flavor == flavor,
+    );
+
+    if (existingIndex >= 0) {
+      _items[existingIndex].quantity += quantity;
+    } else {
+      _items.add(
+        CartItem(
+          product: product,
+          size: size,
+          flavor: flavor,
+          quantity: quantity,
+        ),
+      );
+    }
+
+    _updateCount();
+  }
+
+  static double get cartTotal {
+    return _items.fold(0.0, (value, item) => value + item.total);
+  }
+
+  static void clear() {
+    _items.clear();
+    _updateCount();
+  }
+
+  static void removeItem(CartItem item) {
+    _items.removeWhere((existing) => existing.id == item.id);
+    _updateCount();
+  }
+
+  static void removeItems(List<CartItem> items) {
+    final ids = items.map((item) => item.id).toSet();
+    _items.removeWhere((existing) => ids.contains(existing.id));
+    _updateCount();
+  }
+}
+
+// ============ Badge Widgets ============
+class BadgeIcon extends StatelessWidget {
+  const BadgeIcon({
+    super.key,
+    required this.valueListenable,
+    required this.child,
+  });
+
+  final ValueListenable<int> valueListenable;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<int>(
+      valueListenable: valueListenable,
+      builder: (context, count, child) {
+        return Stack(
+          clipBehavior: Clip.none,
+          children: [
+            child!,
+            if (count > 0)
+              Positioned(
+                right: -6,
+                top: -6,
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFE53935),
+                    shape: BoxShape.circle,
+                  ),
+                  constraints: const BoxConstraints(
+                    minWidth: 18,
+                    minHeight: 18,
+                  ),
+                  child: Text(
+                    count.toString(),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
+      child: child,
+    );
+  }
+}
+
+class CartBadgeIcon extends StatelessWidget {
+  const CartBadgeIcon({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return BadgeIcon(
+      valueListenable: CartService.itemCountNotifier,
+      child: child,
+    );
+  }
+}
+
+class LikeBadgeIcon extends StatelessWidget {
+  const LikeBadgeIcon({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return BadgeIcon(
+      valueListenable: LikeService.likeCountNotifier,
+      child: child,
+    );
+  }
+}
+
+// ============ Shopping Cart Page ============
 class ShoppingCartPage extends StatefulWidget {
   const ShoppingCartPage({super.key});
 
@@ -13,25 +184,10 @@ class ShoppingCartPage extends StatefulWidget {
 
 class _ShoppingCartPageState extends State<ShoppingCartPage> {
   int _selectedIndex = 3;
-  //sample lists of items
-  final List<Map<String, dynamic>> cartItems = [
-    {
-      'title': 'GOLD STANDARD 100% WHEY™',
-      'flavor': 'Blueberry Lemonade',
-      'size': '0.66 LB',
-      'quantity': 1,
-      'price': 0.00,
-      'image': 'assets/wheygold.png',
-    },
-    {
-      'title': 'Gold Standard Isolate Whey Protein',
-      'flavor': 'Citrus Mango',
-      'size': '0.8 LB',
-      'quantity': 2,
-      'price': 0.00,
-      'image': 'assets/wheyisolate.png',
-    },
-  ];
+  bool _checkoutAll = false;
+  final Set<String> _selectedItemIds = {};
+
+  List<CartItem> get cartItems => CartService.items;
 
   void _onItemTapped(int index) {
     setState(() {
@@ -70,10 +226,17 @@ class _ShoppingCartPageState extends State<ShoppingCartPage> {
     }
   }
 
-  bool _checkoutAll = false;
-
   @override
   Widget build(BuildContext context) {
+    final selectedItems = _checkoutAll
+        ? cartItems
+        : cartItems
+              .where((item) => _selectedItemIds.contains(item.id))
+              .toList();
+    final displayTotal = selectedItems.isNotEmpty
+        ? selectedItems.fold(0.0, (sum, item) => sum + item.total)
+        : 0.0;
+
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.white,
@@ -108,6 +271,14 @@ class _ShoppingCartPageState extends State<ShoppingCartPage> {
                   onChanged: (v) {
                     setState(() {
                       _checkoutAll = v ?? false;
+                      if (_checkoutAll) {
+                        _selectedItemIds.clear();
+                        _selectedItemIds.addAll(
+                          cartItems.map((item) => item.id),
+                        );
+                      } else {
+                        _selectedItemIds.clear();
+                      }
                     });
                   },
                 ),
@@ -141,9 +312,44 @@ class _ShoppingCartPageState extends State<ShoppingCartPage> {
                     children: [
                       // Item checkbox
                       Checkbox(
-                        value: _checkoutAll ? true : false,
+                        value:
+                            _checkoutAll || _selectedItemIds.contains(item.id),
                         activeColor: const Color(0xFF1E8B3A),
-                        onChanged: (v) {},
+                        onChanged: (selected) {
+                          setState(() {
+                            if (selected == true) {
+                              _selectedItemIds.add(item.id);
+                              final subtotal =
+                                  item.product.price * item.quantity;
+                              debugPrint(
+                                'Selected product: ${item.product.name}, subtotal: ₱${subtotal.toStringAsFixed(2)}',
+                              );
+                            } else {
+                              _selectedItemIds.remove(item.id);
+                              final subtotal =
+                                  item.product.price * item.quantity;
+                              debugPrint(
+                                'Deselected product: ${item.product.name}, subtotal: ₱${subtotal.toStringAsFixed(2)}',
+                              );
+                            }
+                            _checkoutAll =
+                                _selectedItemIds.length == cartItems.length;
+                            final newTotal = _selectedItemIds.isEmpty
+                                ? 0.0
+                                : cartItems
+                                      .where(
+                                        (item) =>
+                                            _selectedItemIds.contains(item.id),
+                                      )
+                                      .fold(
+                                        0.0,
+                                        (sum, item) => sum + item.total,
+                                      );
+                            debugPrint(
+                              'Cart total updated: ₱${newTotal.toStringAsFixed(2)}',
+                            );
+                          });
+                        },
                       ),
 
                       const SizedBox(width: 6),
@@ -156,13 +362,20 @@ class _ShoppingCartPageState extends State<ShoppingCartPage> {
                           color: Colors.grey[100],
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: item['image'] != null
+                        child:
+                            item.product.image != null &&
+                                item.product.image!.isNotEmpty
                             ? Padding(
                                 padding: const EdgeInsets.all(6.0),
-                                child: Image.asset(
-                                  item['image'],
-                                  fit: BoxFit.contain,
-                                ),
+                                child: item.product.image!.startsWith('http')
+                                    ? Image.network(
+                                        item.product.image!,
+                                        fit: BoxFit.contain,
+                                      )
+                                    : Image.asset(
+                                        item.product.image!,
+                                        fit: BoxFit.contain,
+                                      ),
                               )
                             : const SizedBox.shrink(),
                       ),
@@ -175,7 +388,7 @@ class _ShoppingCartPageState extends State<ShoppingCartPage> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              item['title'],
+                              item.product.name,
                               style: const TextStyle(
                                 fontWeight: FontWeight.w600,
                               ),
@@ -194,7 +407,7 @@ class _ShoppingCartPageState extends State<ShoppingCartPage> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    item['flavor'],
+                                    item.flavor,
                                     style: const TextStyle(
                                       color: Colors.grey,
                                       fontSize: 12,
@@ -202,7 +415,7 @@ class _ShoppingCartPageState extends State<ShoppingCartPage> {
                                   ),
                                   const SizedBox(height: 6),
                                   Text(
-                                    item['size'],
+                                    item.size,
                                     style: const TextStyle(
                                       color: Colors.grey,
                                       fontSize: 12,
@@ -220,12 +433,12 @@ class _ShoppingCartPageState extends State<ShoppingCartPage> {
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
                           Text(
-                            'Quantity: ${item['quantity']}',
+                            'Quantity: ${item.quantity}',
                             style: const TextStyle(color: Colors.grey),
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            '₱${item['price'].toStringAsFixed(2)}',
+                            '₱${item.total.toStringAsFixed(2)}',
                             style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
                         ],
@@ -238,25 +451,92 @@ class _ShoppingCartPageState extends State<ShoppingCartPage> {
           ),
 
           Padding(
-            padding: const EdgeInsets.all(12.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
+            padding: const EdgeInsets.symmetric(
+              horizontal: 12.0,
+              vertical: 8.0,
+            ),
+            child: Column(
               children: [
-                ElevatedButton(
-                  onPressed: () {},
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFBFEFB0),
-                    foregroundColor: Colors.black,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
+                if (cartItems.isNotEmpty && selectedItems.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.only(bottom: 8.0),
+                    child: Text(
+                      'Please select at least one product.',
+                      style: TextStyle(
+                        color: Colors.red,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 18,
-                      vertical: 10,
-                    ),
-                    elevation: 0,
                   ),
-                  child: const Text('Checkout'),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Total: ₱${displayTotal.toStringAsFixed(2)}',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                    ElevatedButton(
+                      onPressed:
+                          cartItems.isEmpty ||
+                              (_selectedItemIds.isEmpty && !_checkoutAll)
+                          ? null
+                          : () {
+                              final selectedItems = _checkoutAll
+                                  ? cartItems
+                                  : cartItems
+                                        .where(
+                                          (item) => _selectedItemIds.contains(
+                                            item.id,
+                                          ),
+                                        )
+                                        .toList();
+
+                              if (selectedItems.isEmpty) {
+                                debugPrint(
+                                  'Checkout disabled, no products selected',
+                                );
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      'Please select at least one product.',
+                                    ),
+                                  ),
+                                );
+                                return;
+                              }
+
+                              if (selectedItems.length == 1) {
+                                debugPrint(
+                                  'Checkout single item: ${selectedItems.first.id}',
+                                );
+                              }
+
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      CheckoutPage(previewItems: selectedItems),
+                                ),
+                              );
+                            },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF73B222),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 18,
+                          vertical: 10,
+                        ),
+                        elevation: 0,
+                      ),
+                      child: const Text('Checkout'),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -269,18 +549,24 @@ class _ShoppingCartPageState extends State<ShoppingCartPage> {
         selectedItemColor: const Color(0xFF1E8B3A),
         unselectedItemColor: Colors.grey,
         onTap: _onItemTapped,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
-          BottomNavigationBarItem(icon: Icon(Icons.favorite), label: "Likes"),
-          BottomNavigationBarItem(
+        items: [
+          const BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
+          const BottomNavigationBarItem(
+            icon: LikeBadgeIcon(child: Icon(Icons.favorite)),
+            label: "Likes",
+          ),
+          const BottomNavigationBarItem(
             icon: Icon(Icons.card_giftcard),
             label: "Track Orders",
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.shopping_cart),
+          const BottomNavigationBarItem(
+            icon: CartBadgeIcon(child: Icon(Icons.shopping_cart)),
             label: "Shopping Cart",
           ),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.person),
+            label: "Profile",
+          ),
         ],
         type: BottomNavigationBarType.fixed,
       ),

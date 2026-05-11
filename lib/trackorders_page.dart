@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'services/realtime_database_service.dart';
+import 'services/review_service.dart';
+import 'shoppingcart_page.dart';
 import 'home_page.dart';
 import 'likes_page.dart';
 import 'profile_page.dart';
-import 'shoppingcart_page.dart';
+import 'review_page.dart';
+import 'utils/date_formatter.dart';
 
 class TrackOrdersPage extends StatefulWidget {
   const TrackOrdersPage({super.key});
@@ -13,28 +18,6 @@ class TrackOrdersPage extends StatefulWidget {
 
 class _TrackOrdersPageState extends State<TrackOrdersPage> {
   int _selectedIndex = 2;
-
-  // sample order data - could later be replaced with real API responses
-  final List<Map<String, dynamic>> orders = [
-    {
-      'name': 'Micronized Creatine Powder',
-      'price': 0.00,
-      'image': 'assets/creatine.png',
-      'status': 'Delivered',
-    },
-    {
-      'name': 'Gold Standard 100% Isolate Whey Protein powder',
-      'price': 0.00,
-      'image': 'assets/wheyisolate.png',
-      'status': 'Delivered',
-    },
-    {
-      'name': 'GOLD STANDARD® Ready To Drink Protein Shake',
-      'price': 0.00,
-      'image': 'assets/goldshake.jpeg',
-      'status': 'In Transit',
-    },
-  ];
 
   void _onItemTapped(int index) {
     setState(() {
@@ -78,9 +61,40 @@ class _TrackOrdersPageState extends State<TrackOrdersPage> {
       case 'delivered':
         return const Color(0xFF1E8B3A); // green
       case 'in transit':
-        return const Color(0xFFCED431); // yellowish
+        return const Color(0xFFFFA000); // orange
+      case 'cancelled':
+        return const Color(0xFFD32F2F); // red
+      case 'failed':
+        return const Color(0xFFD32F2F); // red
+      case 'pending':
+        return const Color(0xFF1976D2); // blue
       default:
         return Colors.grey;
+    }
+  }
+
+  static const List<String> _adminOrderStatuses = [
+    'pending',
+    'in transit',
+    'delivered',
+    'cancelled',
+    'failed',
+  ];
+
+  String _getStatusLabel(String status) {
+    switch (status.toLowerCase()) {
+      case 'delivered':
+        return 'Delivered';
+      case 'in transit':
+        return 'In Transit';
+      case 'cancelled':
+        return 'Cancelled';
+      case 'failed':
+        return 'Failed';
+      case 'pending':
+        return 'Pending';
+      default:
+        return 'Pending';
     }
   }
 
@@ -99,103 +113,438 @@ class _TrackOrdersPageState extends State<TrackOrdersPage> {
           },
         ),
       ),
-      body: ListView.separated(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
-        itemCount: orders.length,
-        separatorBuilder: (_, _) => const SizedBox(height: 12),
-        itemBuilder: (context, index) {
-          final order = orders[index];
-          return Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: const [
-                BoxShadow(
-                  color: Color(0x11000000),
-                  blurRadius: 6,
-                  offset: Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 56,
-                  height: 56,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[100],
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: order['image'] != null
-                      ? Padding(
-                          padding: const EdgeInsets.all(6.0),
-                          child: Image.asset(
-                            order['image'],
-                            fit: BoxFit.contain,
-                          ),
-                        )
-                      : const SizedBox.shrink(),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        order['name'],
-                        style: const TextStyle(fontWeight: FontWeight.w600),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        '₱${order['price'].toStringAsFixed(2)}',
-                        style: const TextStyle(color: Colors.grey),
-                      ),
-                    ],
-                  ),
-                ),
-                ElevatedButton(
-                  onPressed: () {},
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _statusColor(order['status']),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
-                    ),
-                  ),
-                  child: Text(
-                    order['status'],
-                    style: const TextStyle(fontSize: 12),
-                  ),
-                ),
-              ],
-            ),
-          );
-        },
-      ),
+      body: _buildOrdersList(),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         selectedItemColor: const Color(0xFF1E8B3A),
         unselectedItemColor: Colors.grey,
         onTap: _onItemTapped,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.favorite), label: 'Likes'),
-          BottomNavigationBarItem(
+        items: [
+          const BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+          const BottomNavigationBarItem(
+            icon: LikeBadgeIcon(child: Icon(Icons.favorite)),
+            label: 'Likes',
+          ),
+          const BottomNavigationBarItem(
             icon: Icon(Icons.card_giftcard),
             label: 'Track Orders',
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.shopping_cart),
+          const BottomNavigationBarItem(
+            icon: CartBadgeIcon(child: Icon(Icons.shopping_cart)),
             label: 'Shopping Cart',
           ),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.person),
+            label: 'Profile',
+          ),
         ],
         type: BottomNavigationBarType.fixed,
       ),
     );
+  }
+
+  Widget _buildOrdersList() {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) {
+      return const Center(child: Text('Please sign in to view your orders.'));
+    }
+
+    debugPrint('TrackOrdersPage current uid=${currentUser.uid}');
+
+    return FutureBuilder<Map<String, dynamic>>(
+      future: RealtimeDatabaseService.getCustomerOrDefault(currentUser.uid),
+      builder: (context, customerSnapshot) {
+        if (customerSnapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (customerSnapshot.hasError) {
+          debugPrint('getCustomerOrDefault error: ${customerSnapshot.error}');
+        }
+
+        final role =
+            customerSnapshot.data?['role']?.toString().toLowerCase() ??
+            'customer';
+        final isAdmin = role == 'admin';
+
+        final currentUid = currentUser.uid;
+        final stream = isAdmin
+            ? RealtimeDatabaseService.ordersStreamForAdmin()
+            : RealtimeDatabaseService.ordersStreamForCustomer(currentUid);
+
+        return StreamBuilder<List<Order>>(
+          stream: stream,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+
+            if (snapshot.hasError) {
+              final errorMsg = snapshot.error.toString().toLowerCase();
+              final errorMessage =
+                  errorMsg.contains('permission-denied') ||
+                      errorMsg.contains('permission')
+                  ? 'Access denied: you do not have permission to view orders.'
+                  : 'Error loading orders: ${snapshot.error}';
+
+              return Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text(
+                    errorMessage,
+                    style: const TextStyle(color: Colors.red),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              );
+            }
+
+            final orders = snapshot.data ?? [];
+            debugPrint(
+              'TrackOrdersPage loaded ${orders.length} orders for uid=${currentUser.uid}; '
+              'userIds=${orders.map((o) => o.userId).toList()}',
+            );
+            for (final order in orders) {
+              debugPrint(
+                'TrackOrdersPage orderId=${order.id} orderUserId=${order.userId} status=${order.status}',
+              );
+              if (!isAdmin && order.userId != currentUser.uid) {
+                debugPrint(
+                  'TrackOrdersPage ACCESS DENIED: auth.uid=${currentUser.uid} != order.userId=${order.userId} for orderId=${order.id}',
+                );
+              }
+            }
+
+            Order? mismatchedOrder;
+            for (final order in orders) {
+              if (order.userId != currentUser.uid) {
+                mismatchedOrder = order;
+                break;
+              }
+            }
+
+            if (!isAdmin && mismatchedOrder != null) {
+              debugPrint(
+                'TrackOrdersPage mismatch: authUid=${currentUser.uid} '
+                'orderUserId=${mismatchedOrder.userId} orderId=${mismatchedOrder.id}',
+              );
+              return const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Text(
+                    'Access denied: you do not have permission to view orders.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.red),
+                  ),
+                ),
+              );
+            }
+
+            if (orders.isEmpty) {
+              return const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Text(
+                    'No orders yet. Once you place an order, it will appear here.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                ),
+              );
+            }
+
+            return ListView.separated(
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+              itemCount: orders.length,
+              separatorBuilder: (context, index) => const SizedBox(height: 12),
+              itemBuilder: (context, index) {
+                final order = orders[index];
+                final isPending = order.status.toLowerCase() == 'pending';
+
+                return Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x11000000),
+                        blurRadius: 6,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Order ID + Status
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              'Order ID: ${order.id}',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
+                            decoration: BoxDecoration(
+                              color: _statusColor(
+                                order.status,
+                              ).withOpacity(0.16),
+                              borderRadius: BorderRadius.circular(24),
+                            ),
+                            child: Text(
+                              _getStatusLabel(order.status),
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: _statusColor(order.status),
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+
+                      // Product details
+                      Text(
+                        order.productName,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('Quantity: ${order.quantity}'),
+                          Text(
+                            'Total: ₱${order.totalPrice.toStringAsFixed(2)}',
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Placed: ${DateFormatter.formatDateTime(order.timestamp)}',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF6B7280),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+
+                      if (isAdmin) ...[
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            const Text(
+                              'Update status:',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 13,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: DecoratedBox(
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF5F5F5),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(
+                                    color: Colors.grey.shade300,
+                                  ),
+                                ),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                  ),
+                                  child: DropdownButtonHideUnderline(
+                                    child: DropdownButton<String>(
+                                      isExpanded: true,
+                                      value:
+                                          _adminOrderStatuses.contains(
+                                            order.status.toLowerCase(),
+                                          )
+                                          ? order.status.toLowerCase()
+                                          : 'pending',
+                                      items: _adminOrderStatuses.map((status) {
+                                        return DropdownMenuItem(
+                                          value: status,
+                                          child: Text(_getStatusLabel(status)),
+                                        );
+                                      }).toList(),
+                                      onChanged: (newStatus) {
+                                        if (newStatus == null ||
+                                            newStatus ==
+                                                order.status.toLowerCase()) {
+                                          return;
+                                        }
+                                        _updateOrderStatus(order.id, newStatus);
+                                      },
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ] else if (isPending) ...[
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: () => _cancelOrder(order.id),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.red[400],
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            child: const Text('Cancel Order'),
+                          ),
+                        ),
+                      ] else if (order.status.toLowerCase() == 'delivered') ...[
+                        FutureBuilder<bool>(
+                          future: _canWriteReview(order),
+                          builder: (context, reviewSnapshot) {
+                            if (reviewSnapshot.connectionState ==
+                                ConnectionState.waiting) {
+                              return const Padding(
+                                padding: EdgeInsets.symmetric(vertical: 12),
+                                child: Center(
+                                  child: CircularProgressIndicator(),
+                                ),
+                              );
+                            }
+                            if (reviewSnapshot.hasError ||
+                                reviewSnapshot.data != true) {
+                              return const SizedBox.shrink();
+                            }
+
+                            return SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton(
+                                onPressed: () => _navigateToReview(
+                                  order.id,
+                                  order.productId,
+                                  order.productName,
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF028B22),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
+                                child: const Text('Write a Review'),
+                              ),
+                            );
+                          },
+                        ),
+                      ],
+                    ],
+                  ),
+                );
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<bool> _canWriteReview(Order order) async {
+    if (order.reviewed) {
+      debugPrint(
+        'TrackOrdersPage _canWriteReview: order ${order.id} already marked reviewed',
+      );
+      return false;
+    }
+
+    final alreadyReviewed = await ReviewService.hasAlreadyReviewedOrder(
+      order.id,
+    );
+    debugPrint(
+      'TrackOrdersPage _canWriteReview: orderId=${order.id} alreadyReviewed=$alreadyReviewed',
+    );
+    return !alreadyReviewed;
+  }
+
+  Future<void> _cancelOrder(String orderId) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Cancel Order?'),
+        content: const Text('Are you sure you want to cancel this order?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('No'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Yes, Cancel'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    try {
+      await RealtimeDatabaseService.updateOrderStatus(orderId, 'cancelled');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Order cancelled successfully.')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to cancel order: $e')));
+    }
+  }
+
+  void _navigateToReview(String orderId, String productId, String productName) {
+    debugPrint(
+      'Navigating to ReviewPage for orderId: $orderId, productId: $productId',
+    );
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ReviewPage(
+          orderId: orderId,
+          productId: productId,
+          productName: productName,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _updateOrderStatus(String orderId, String newStatus) async {
+    try {
+      await RealtimeDatabaseService.updateOrderStatus(orderId, newStatus);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Order status updated to ${_getStatusLabel(newStatus)}.',
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to update status: $e')));
+    }
   }
 }
