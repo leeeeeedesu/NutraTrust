@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'utils/app_theme.dart';
 
 import 'home_page.dart';
 import 'likes_page.dart';
@@ -240,7 +241,7 @@ class _ShippingLocationPageState extends State<ShippingLocationPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Location'),
-        backgroundColor: const Color(0xFF028B22),
+        backgroundColor: AppColors.primary,
         centerTitle: true,
       ),
       body: SafeArea(
@@ -257,11 +258,11 @@ class _ShippingLocationPageState extends State<ShippingLocationPage> {
                     Container(
                       padding: const EdgeInsets.all(18),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: AppColors.cardBackground,
                         borderRadius: BorderRadius.circular(14),
                         boxShadow: const [
                           BoxShadow(
-                            color: Color(0x11000000),
+                            color: AppColors.shadow,
                             blurRadius: 10,
                             offset: Offset(0, 6),
                           ),
@@ -318,7 +319,7 @@ class _ShippingLocationPageState extends State<ShippingLocationPage> {
                           ElevatedButton(
                             onPressed: _saving ? null : _saveProfile,
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF028B22),
+                              backgroundColor: AppColors.primary,
                               padding: const EdgeInsets.symmetric(vertical: 16),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
@@ -346,8 +347,8 @@ class _ShippingLocationPageState extends State<ShippingLocationPage> {
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
-        selectedItemColor: const Color(0xFF1E8B3A),
-        unselectedItemColor: Colors.grey,
+        selectedItemColor: AppColors.primary,
+        unselectedItemColor: AppColors.text.withOpacity(0.627),
         onTap: _onItemTapped,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
@@ -380,7 +381,7 @@ class _ShippingLocationPageState extends State<ShippingLocationPage> {
           controller: controller,
           decoration: InputDecoration(
             filled: true,
-            fillColor: const Color(0xFFF7F7F7),
+            fillColor: AppColors.secondary,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide.none,

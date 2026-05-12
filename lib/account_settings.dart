@@ -71,7 +71,7 @@ class _AccountSettingsPageState extends State<AccountSettingsPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Settings'),
-        backgroundColor: const Color(0xFF028B22),
+        backgroundColor: const Color(0xFF1B5E20),
         centerTitle: true,
       ),
       body: SafeArea(
@@ -513,71 +513,9 @@ class _AccountSecurityPageState extends State<AccountSecurityPage> {
     }
   }
 
-  Future<void> _pickAndUploadBannerImage() async {
-    try {
-      final pickedFile = await _imagePicker.pickImage(
-        source: ImageSource.gallery,
-      );
-      if (pickedFile == null) return;
-
-      debugPrint('Selected image path: ${pickedFile.path}');
-
-      final file = File(pickedFile.path);
-      final secureUrl = await _cloudinaryService.uploadImage(file);
-
-      debugPrint('Uploaded to Cloudinary: $secureUrl');
-
-      final currentUser = FirebaseAuth.instance.currentUser;
-      if (currentUser == null) return;
-
-      await RealtimeDatabaseService.updateUserImages(
-        currentUser.uid,
-        bannerImageUrl: secureUrl,
-      );
-
-      debugPrint('Saved bannerImage: $secureUrl');
-
-      if (!mounted) return;
-      setState(() {
-        _bannerImageUrl = secureUrl;
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Banner image updated successfully.')),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to update banner image: $e')),
-      );
-    }
-  }
-
-  Future<void> _sendPasswordReset() async {
-    final email = _emailController.text.trim();
-    if (email.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No account email available.')),
-      );
-      return;
-    }
-
-    try {
-      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Password reset link sent to $email')),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Unable to send reset email: $e')));
-    }
-  }
-
   Future<void> _logout() async {
     await FirebaseAuth.instance.signOut();
+    CartService.clear();
     if (!mounted) return;
     Navigator.pushAndRemoveUntil(
       context,
@@ -591,7 +529,7 @@ class _AccountSecurityPageState extends State<AccountSecurityPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Account & Security'),
-        backgroundColor: const Color(0xFF028B22),
+        backgroundColor: const Color(0xFF1B5E20),
         centerTitle: true,
       ),
       body: SafeArea(
@@ -624,7 +562,7 @@ class _AccountSecurityPageState extends State<AccountSecurityPage> {
                               style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
-                                color: Color(0xFF1E8B3A),
+                                color: Color(0xFF1B5E20),
                               ),
                             ),
                             const SizedBox(height: 16),
@@ -652,7 +590,7 @@ class _AccountSecurityPageState extends State<AccountSecurityPage> {
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
-                                color: Color(0xFF1E8B3A),
+                                color: Color(0xFF1B5E20),
                               ),
                             ),
                             const SizedBox(height: 16),
@@ -688,7 +626,7 @@ class _AccountSecurityPageState extends State<AccountSecurityPage> {
                                       label: const Text('Edit Profile Image'),
                                       style: ElevatedButton.styleFrom(
                                         backgroundColor: const Color(
-                                          0xFF028B22,
+                                          0xFF1B5E20,
                                         ),
                                         foregroundColor: Colors.white,
                                       ),
@@ -699,56 +637,6 @@ class _AccountSecurityPageState extends State<AccountSecurityPage> {
                             ),
                             const SizedBox(height: 16),
                             // Banner Image Section
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Banner Image',
-                                  style: TextStyle(fontWeight: FontWeight.w600),
-                                ),
-                                const SizedBox(height: 10),
-                                Row(
-                                  children: [
-                                    Container(
-                                      width: 80,
-                                      height: 40,
-                                      decoration: BoxDecoration(
-                                        color: Colors.grey[300],
-                                        borderRadius: BorderRadius.circular(8),
-                                        image: _bannerImageUrl != null
-                                            ? DecorationImage(
-                                                image: NetworkImage(
-                                                  _bannerImageUrl!,
-                                                ),
-                                                fit: BoxFit.cover,
-                                              )
-                                            : null,
-                                      ),
-                                      child: _bannerImageUrl == null
-                                          ? const Center(
-                                              child: Text(
-                                                'Banner',
-                                                style: TextStyle(fontSize: 10),
-                                              ),
-                                            )
-                                          : null,
-                                    ),
-                                    const SizedBox(width: 16),
-                                    ElevatedButton.icon(
-                                      onPressed: _pickAndUploadBannerImage,
-                                      icon: const Icon(Icons.edit),
-                                      label: const Text('Edit Banner'),
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: const Color(
-                                          0xFF028B22,
-                                        ),
-                                        foregroundColor: Colors.white,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
                             const SizedBox(height: 24),
                             ElevatedButton(
                               onPressed: _saving
@@ -765,7 +653,7 @@ class _AccountSecurityPageState extends State<AccountSecurityPage> {
                                       }
                                     },
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF028B22),
+                                backgroundColor: const Color(0xFF1B5E20),
                                 padding: const EdgeInsets.symmetric(
                                   vertical: 16,
                                 ),
@@ -854,7 +742,7 @@ class _AccountSecurityPageState extends State<AccountSecurityPage> {
           ),
           const Divider(height: 1),
           ListTile(
-            leading: const Icon(Icons.logout, color: Color(0xFF1E8B3A)),
+            leading: const Icon(Icons.logout, color: Color(0xFF1B5E20)),
             title: const Text('Log Out'),
             subtitle: const Text('Sign out of this account'),
             trailing: const Icon(Icons.arrow_forward_ios, size: 18),

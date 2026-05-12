@@ -160,143 +160,112 @@ class AdminInventoryPage extends StatelessWidget {
                       final product = products[index];
                       final background = _statusBackground(product.stock);
                       final statusColor = _statusTextColor(product.stock);
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 0),
-                        decoration: BoxDecoration(
-                          color: background,
-                          borderRadius: BorderRadius.circular(22),
-                          border: Border.all(
-                            color: product.stock == 0
-                                ? const Color(0xFFEF9A9A)
-                                : product.stock <= 5
-                                ? const Color(0xFFFFCC80)
-                                : const Color(0xFFE5E7EB),
-                          ),
+                      return Card(
+                        elevation: 4,
+                        margin: EdgeInsets.zero,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
                         ),
+                        color: background,
                         child: Padding(
-                          padding: const EdgeInsets.all(18),
-                          child: Row(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
+                              // Image
+                              Center(
+                                child: Container(
+                                  width: 80,
+                                  height: 80,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF4F6F9),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child:
+                                      product.image != null &&
+                                          product.image!.isNotEmpty
+                                      ? ClipRRect(
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
+                                          child:
+                                              product.image!.startsWith('http')
+                                              ? Image.network(
+                                                  product.image!,
+                                                  fit: BoxFit.cover,
+                                                )
+                                              : Image.asset(
+                                                  product.image!,
+                                                  fit: BoxFit.cover,
+                                                ),
+                                        )
+                                      : const Icon(
+                                          Icons.inventory_2,
+                                          size: 36,
+                                          color: Color(0xFF9CA3AF),
+                                        ),
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              // Product Name
+                              Text(
+                                product.name,
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF1F2937),
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              // Description
+                              Text(
+                                product.description,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  color: Color(0xFF6B7280),
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              // Price and Category Row
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    '₱${product.price}',
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF1E8B3A),
+                                    ),
+                                  ),
+                                  Text(
+                                    product.category ?? 'Uncategorized',
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      color: Color(0xFF6B7280),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              // Stock Status
                               Container(
-                                width: 72,
-                                height: 72,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 6,
+                                ),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFFF4F6F9),
-                                  borderRadius: BorderRadius.circular(18),
+                                  color: statusColor.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(20),
                                 ),
-                                child:
-                                    product.image != null &&
-                                        product.image!.isNotEmpty
-                                    ? ClipRRect(
-                                        borderRadius: BorderRadius.circular(18),
-                                        child: product.image!.startsWith('http')
-                                            ? Image.network(
-                                                product.image!,
-                                                fit: BoxFit.cover,
-                                              )
-                                            : Image.asset(
-                                                product.image!,
-                                                fit: BoxFit.cover,
-                                              ),
-                                      )
-                                    : const Icon(
-                                        Icons.inventory_2,
-                                        size: 32,
-                                        color: Color(0xFF9CA3AF),
-                                      ),
-                              ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      product.name,
-                                      style: const TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      product.description,
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                        fontSize: 13,
-                                        color: Color(0xFF6B7280),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 12),
-                                    Row(
-                                      children: [
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 10,
-                                            vertical: 6,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: statusColor.withValues(
-                                              alpha: 0.14,
-                                            ),
-                                            borderRadius: BorderRadius.circular(
-                                              14,
-                                            ),
-                                          ),
-                                          child: Text(
-                                            _stockTag(product.stock),
-                                            style: TextStyle(
-                                              color: statusColor,
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(width: 12),
-                                        Expanded(
-                                          child: Text(
-                                            'Stocks: ${product.stock}',
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: const TextStyle(
-                                              fontSize: 12,
-                                              color: Color(0xFF4B5563),
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Flexible(
-                                fit: FlexFit.loose,
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.end,
-                                  children: [
-                                    Text(
-                                      '₱${product.price}',
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                        color: Color(0xFF1E8B3A),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 12),
-                                    Text(
-                                      product.category ?? 'Uncategorized',
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      textAlign: TextAlign.right,
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        color: Color(0xFF6B7280),
-                                      ),
-                                    ),
-                                  ],
+                                child: Text(
+                                  '${_stockTag(product.stock)} (${product.stock})',
+                                  style: TextStyle(
+                                    color: statusColor,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
                               ),
                             ],

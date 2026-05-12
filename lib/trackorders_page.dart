@@ -16,8 +16,31 @@ class TrackOrdersPage extends StatefulWidget {
   State<TrackOrdersPage> createState() => _TrackOrdersPageState();
 }
 
+Future<void> _ensureOrdersMigrated() async {
+  try {
+    debugPrint('TrackOrdersPage: Starting orders migration...');
+    await RealtimeDatabaseService.migrateOrdersUserId();
+    debugPrint('TrackOrdersPage: Orders migration completed.');
+  } catch (e) {
+    debugPrint('TrackOrdersPage: Migration error: $e');
+  }
+}
+
 class _TrackOrdersPageState extends State<TrackOrdersPage> {
   int _selectedIndex = 2;
+  bool _migrationRunning = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Start migration without blocking UI
+    _migrationRunning = true;
+    _ensureOrdersMigrated().then((_) {
+      if (mounted) {
+        setState(() => _migrationRunning = false);
+      }
+    });
+  }
 
   void _onItemTapped(int index) {
     setState(() {
@@ -103,6 +126,7 @@ class _TrackOrdersPageState extends State<TrackOrdersPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Track Orders'),
+        backgroundColor: const Color(0xFF1B5E20),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () {
@@ -149,7 +173,7 @@ class _TrackOrdersPageState extends State<TrackOrdersPage> {
       return const Center(child: Text('Please sign in to view your orders.'));
     }
 
-    debugPrint('TrackOrdersPage current uid=${currentUser.uid}');
+    debugPrint('TrackOrdersPage._buildOrdersList: uid=${currentUser.uid}');
 
     return FutureBuilder<Map<String, dynamic>>(
       future: RealtimeDatabaseService.getCustomerOrDefault(currentUser.uid),
@@ -159,14 +183,20 @@ class _TrackOrdersPageState extends State<TrackOrdersPage> {
         }
 
         if (customerSnapshot.hasError) {
-          debugPrint('getCustomerOrDefault error: ${customerSnapshot.error}');
+          debugPrint(
+            'TrackOrdersPage: getCustomerOrDefault error: ${customerSnapshot.error}',
+          );
         }
 
+        // Determine user role: admin can see all orders, customer sees only theirs
         final role =
             customerSnapshot.data?['role']?.toString().toLowerCase() ??
             'customer';
         final isAdmin = role == 'admin';
 
+        debugPrint('TrackOrdersPage: User role=$role, isAdmin=$isAdmin');
+
+        // Get the appropriate stream
         final currentUid = currentUser.uid;
         final stream = isAdmin
             ? RealtimeDatabaseService.ordersStreamForAdmin()
@@ -179,19 +209,59 @@ class _TrackOrdersPageState extends State<TrackOrdersPage> {
               return const Center(child: CircularProgressIndicator());
             }
 
+            // Handle permission denied or other errors
             if (snapshot.hasError) {
               final errorMsg = snapshot.error.toString().toLowerCase();
-              final errorMessage =
+              final isPermissionDenied =
                   errorMsg.contains('permission-denied') ||
-                      errorMsg.contains('permission')
-                  ? 'Access denied: you do not have permission to view orders.'
-                  : 'Error loading orders: ${snapshot.error}';
+                  errorMsg.contains('permission');
+
+              debugPrint(
+                'TrackOrdersPage: Stream error (permission=$isPermissionDenied): ${snapshot.error}',
+              );
+
+              if (isPermissionDenied) {
+                return Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(
+                          Icons.lock_outline,
+                          size: 48,
+                          color: Colors.red,
+                        ),
+                        const SizedBox(height: 16),
+                        const Text(
+                          'Permission Denied',
+                          style: TextStyle(
+                            color: Colors.red,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Unable to load orders. Please try signing out and signing back in.',
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 14,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }
 
               return Center(
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: Text(
-                    errorMessage,
+                    'Error loading orders:\n${snapshot.error}',
                     style: const TextStyle(color: Colors.red),
                     textAlign: TextAlign.center,
                   ),
@@ -201,44 +271,8 @@ class _TrackOrdersPageState extends State<TrackOrdersPage> {
 
             final orders = snapshot.data ?? [];
             debugPrint(
-              'TrackOrdersPage loaded ${orders.length} orders for uid=${currentUser.uid}; '
-              'userIds=${orders.map((o) => o.userId).toList()}',
+              'TrackOrdersPage: Loaded ${orders.length} orders for uid=$currentUid',
             );
-            for (final order in orders) {
-              debugPrint(
-                'TrackOrdersPage orderId=${order.id} orderUserId=${order.userId} status=${order.status}',
-              );
-              if (!isAdmin && order.userId != currentUser.uid) {
-                debugPrint(
-                  'TrackOrdersPage ACCESS DENIED: auth.uid=${currentUser.uid} != order.userId=${order.userId} for orderId=${order.id}',
-                );
-              }
-            }
-
-            Order? mismatchedOrder;
-            for (final order in orders) {
-              if (order.userId != currentUser.uid) {
-                mismatchedOrder = order;
-                break;
-              }
-            }
-
-            if (!isAdmin && mismatchedOrder != null) {
-              debugPrint(
-                'TrackOrdersPage mismatch: authUid=${currentUser.uid} '
-                'orderUserId=${mismatchedOrder.userId} orderId=${mismatchedOrder.id}',
-              );
-              return const Center(
-                child: Padding(
-                  padding: EdgeInsets.all(16),
-                  child: Text(
-                    'Access denied: you do not have permission to view orders.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.red),
-                  ),
-                ),
-              );
-            }
 
             if (orders.isEmpty) {
               return const Center(

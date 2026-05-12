@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'utils/app_theme.dart';
 import 'trackorders_page.dart';
 import 'widgets/review_form.dart';
 
@@ -19,7 +20,7 @@ class ReviewPage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Write a Review'),
-        backgroundColor: const Color(0xFF028B22),
+        backgroundColor: AppColors.primary,
         centerTitle: true,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),

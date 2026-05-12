@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../product.dart';
 import '../services/realtime_database_service.dart';
+import '../utils/app_theme.dart';
 import 'admin_base_page.dart';
 import 'admin_delivery.dart';
 import 'admin_inventory.dart';
@@ -23,7 +24,6 @@ class AdminDashboardPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(foregroundColor: Colors.white),
       body: AdminBasePage(
         activePage: AdminPage.dashboard,
         onDashboardTap: () {},

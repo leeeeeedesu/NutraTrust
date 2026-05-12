@@ -104,7 +104,7 @@ class _SearchPageState extends State<SearchPage> {
     return Scaffold(
       backgroundColor: const Color(0xFFF7FFFA),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF028B22),
+        backgroundColor: const Color(0xFF1B5E20),
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
@@ -124,7 +124,7 @@ class _SearchPageState extends State<SearchPage> {
         children: [
           // Search bar
           Container(
-            color: const Color(0xFF028B22),
+            color: const Color(0xFF1B5E20),
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
             child: TextField(
               controller: _searchController,
@@ -209,7 +209,7 @@ class _SearchPageState extends State<SearchPage> {
   Widget _buildResults() {
     if (_isLoading) {
       return const Center(
-        child: CircularProgressIndicator(color: Color(0xFF028B22)),
+        child: CircularProgressIndicator(color: Color(0xFF1B5E20)),
       );
     }
 
@@ -294,7 +294,7 @@ class _SuggestionItem extends StatelessWidget {
                       width: 40,
                       height: 40,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => _placeholderImage(),
+                      errorBuilder: (_, _, _) => _placeholderImage(),
                     )
                   : _placeholderImage(),
             ),

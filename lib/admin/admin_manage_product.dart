@@ -44,6 +44,9 @@ class _AdminManageProductPageState extends State<AdminManageProductPage> {
     final imageUrlController = TextEditingController(
       text: initialProduct?.image ?? '',
     );
+    String selectedCategory = initialProduct?.category?.isNotEmpty == true
+        ? initialProduct!.category!
+        : 'Protein';
 
     showModalBottomSheet<void>(
       context: context,
@@ -89,23 +92,41 @@ class _AdminManageProductPageState extends State<AdminManageProductPage> {
                         ),
                       ),
                       const SizedBox(height: 16),
-                      _buildInputField('Product Name', nameController),
+                      _buildInputField(
+                        'Product Name',
+                        nameController,
+                        icon: Icons.label,
+                      ),
                       const SizedBox(height: 12),
                       _buildInputField(
                         'Flavors (comma separated)',
                         flavorsController,
+                        icon: Icons.emoji_food_beverage,
                       ),
                       const SizedBox(height: 12),
                       _buildInputField(
                         'Number of Stocks',
                         stockController,
                         keyboardType: TextInputType.number,
+                        icon: Icons.inventory_2,
                       ),
                       const SizedBox(height: 12),
                       _buildInputField(
                         'Set Price',
                         priceController,
                         keyboardType: TextInputType.number,
+                        icon: Icons.price_change,
+                      ),
+                      const SizedBox(height: 12),
+                      _buildCategoryDropdown(
+                        selectedCategory: selectedCategory,
+                        onChanged: (value) {
+                          if (value != null) {
+                            setState(() {
+                              selectedCategory = value;
+                            });
+                          }
+                        },
                       ),
                       const SizedBox(height: 12),
                       _buildInputField(
@@ -113,12 +134,19 @@ class _AdminManageProductPageState extends State<AdminManageProductPage> {
                         descriptionController,
                         minLines: 4,
                         maxLines: 6,
+                        icon: Icons.description,
                       ),
                       const SizedBox(height: 12),
-                      _buildInputField('Product Image URL', imageUrlController),
+                      _buildInputField(
+                        'Product Image URL',
+                        imageUrlController,
+                        icon: Icons.image,
+                      ),
+                      const SizedBox(height: 12),
+                      Divider(height: 1, thickness: 1, color: Colors.grey[300]),
                       const SizedBox(height: 8),
                       const Text(
-                        'Enter a Cloudinary secure image URL or upload a local image to Cloudinary.',
+                        'Enter an image URL or upload a local image.',
                         style: TextStyle(fontSize: 12, color: Colors.black54),
                       ),
                       const SizedBox(height: 12),
@@ -136,6 +164,7 @@ class _AdminManageProductPageState extends State<AdminManageProductPage> {
                                 ),
                               ),
                               onPressed: () async {
+                                final messenger = ScaffoldMessenger.of(context);
                                 File? pickedFile;
                                 setState(() {});
                                 final pickedImage = await ImagePicker()
@@ -158,7 +187,7 @@ class _AdminManageProductPageState extends State<AdminManageProductPage> {
                                       );
                                   if (!mounted) return;
                                   imageUrlController.text = secureUrl;
-                                  ScaffoldMessenger.of(context).showSnackBar(
+                                  messenger.showSnackBar(
                                     const SnackBar(
                                       content: Text(
                                         'Image uploaded to Cloudinary.',
@@ -167,7 +196,7 @@ class _AdminManageProductPageState extends State<AdminManageProductPage> {
                                   );
                                 } catch (error) {
                                   if (!mounted) return;
-                                  ScaffoldMessenger.of(context).showSnackBar(
+                                  messenger.showSnackBar(
                                     SnackBar(
                                       content: Text(
                                         'Cloudinary upload failed: $error',
@@ -176,9 +205,7 @@ class _AdminManageProductPageState extends State<AdminManageProductPage> {
                                   );
                                 }
                               },
-                              child: const Text(
-                                'Upload Local Image to Cloudinary',
-                              ),
+                              child: const Text('Upload Image'),
                             ),
                           ),
                         ],
@@ -214,6 +241,8 @@ class _AdminManageProductPageState extends State<AdminManageProductPage> {
                                 ),
                               ),
                               onPressed: () async {
+                                final messenger = ScaffoldMessenger.of(context);
+                                final navigator = Navigator.of(context);
                                 final name = nameController.text.trim();
                                 final flavors = flavorsController.text
                                     .split(',')
@@ -231,7 +260,7 @@ class _AdminManageProductPageState extends State<AdminManageProductPage> {
                                 final imageUrl = imageUrlController.text.trim();
 
                                 if (name.isEmpty || description.isEmpty) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
+                                  messenger.showSnackBar(
                                     const SnackBar(
                                       content: Text(
                                         'Product name and description are required.',
@@ -247,6 +276,7 @@ class _AdminManageProductPageState extends State<AdminManageProductPage> {
                                   'stock': stock,
                                   'price': price,
                                   'flavors': flavors,
+                                  'category': selectedCategory,
                                   'imageUrl': imageUrl,
                                 };
 
@@ -261,9 +291,9 @@ class _AdminManageProductPageState extends State<AdminManageProductPage> {
                                       productData,
                                     );
                                   }
-                                  if (mounted) Navigator.pop(context);
+                                  if (mounted) navigator.pop();
                                 } catch (e) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
+                                  messenger.showSnackBar(
                                     SnackBar(
                                       content: Text('Error saving product: $e'),
                                     ),
@@ -344,6 +374,7 @@ class _AdminManageProductPageState extends State<AdminManageProductPage> {
                         );
                       }
                       final products = snapshot.data ?? [];
+                      final messenger = ScaffoldMessenger.of(context);
                       if (products.isEmpty) {
                         return const Center(
                           child: Text('No products available to delete.'),
@@ -351,7 +382,7 @@ class _AdminManageProductPageState extends State<AdminManageProductPage> {
                       }
                       return ListView.separated(
                         itemCount: products.length,
-                        separatorBuilder: (_, __) => const Divider(),
+                        separatorBuilder: (context, index) => const Divider(),
                         itemBuilder: (context, index) {
                           final product = products[index];
                           return ListTile(
@@ -391,7 +422,7 @@ class _AdminManageProductPageState extends State<AdminManageProductPage> {
                                     product.id,
                                   );
                                   if (mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
+                                    messenger.showSnackBar(
                                       SnackBar(
                                         content: Text(
                                           '${product.name} deleted.',
@@ -476,7 +507,7 @@ class _AdminManageProductPageState extends State<AdminManageProductPage> {
                       }
                       return ListView.separated(
                         itemCount: products.length,
-                        separatorBuilder: (_, __) => const Divider(),
+                        separatorBuilder: (context, index) => const Divider(),
                         itemBuilder: (context, index) {
                           final product = products[index];
                           return ListTile(
@@ -514,6 +545,7 @@ class _AdminManageProductPageState extends State<AdminManageProductPage> {
     int minLines = 1,
     int maxLines = 1,
     TextInputType keyboardType = TextInputType.text,
+    IconData? icon,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -535,6 +567,9 @@ class _AdminManageProductPageState extends State<AdminManageProductPage> {
           decoration: InputDecoration(
             filled: true,
             fillColor: const Color(0xFFF7F7F7),
+            prefixIcon: icon != null
+                ? Icon(icon, color: const Color(0xFF1E8B3A))
+                : null,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide.none,
@@ -543,6 +578,58 @@ class _AdminManageProductPageState extends State<AdminManageProductPage> {
               horizontal: 14,
               vertical: 14,
             ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCategoryDropdown({
+    required String selectedCategory,
+    required ValueChanged<String?> onChanged,
+  }) {
+    const categories = [
+      'Protein',
+      'Vitamins',
+      'Minerals',
+      'Herbs',
+      'Amino Acids',
+      'Creatine',
+      'Pre-Workout',
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Product Category',
+          style: TextStyle(
+            fontSize: 13,
+            color: Color(0xFF1E8B3A),
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Container(
+          decoration: BoxDecoration(
+            color: const Color(0xFFF7F7F7),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFFE0E0E0)),
+          ),
+          child: DropdownButtonFormField<String>(
+            initialValue: selectedCategory,
+            onChanged: onChanged,
+            decoration: const InputDecoration(
+              border: InputBorder.none,
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 14,
+              ),
+            ),
+            icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF1E8B3A)),
+            items: categories.map((category) {
+              return DropdownMenuItem(value: category, child: Text(category));
+            }).toList(),
           ),
         ),
       ],

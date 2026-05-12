@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'utils/app_theme.dart';
 
 import 'home_page.dart';
 import 'likes_page.dart';
@@ -62,7 +63,7 @@ class _WalletPageState extends State<WalletPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Wallet'),
-        backgroundColor: const Color(0xFF028B22),
+        backgroundColor: AppColors.primary,
         centerTitle: true,
       ),
       body: SafeArea(
@@ -72,11 +73,11 @@ class _WalletPageState extends State<WalletPage> {
             children: [
               Container(
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: AppColors.cardBackground,
                   borderRadius: BorderRadius.circular(14),
                   boxShadow: const [
                     BoxShadow(
-                      color: Color(0x11000000),
+                      color: AppColors.shadow,
                       blurRadius: 10,
                       offset: Offset(0, 6),
                     ),
@@ -91,7 +92,7 @@ class _WalletPageState extends State<WalletPage> {
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF1E8B3A),
+                        color: AppColors.primary,
                       ),
                     ),
                     const SizedBox(height: 14),
@@ -101,7 +102,7 @@ class _WalletPageState extends State<WalletPage> {
                         Text(
                           '₱',
                           style: TextStyle(
-                            color: Color(0xFF1E8B3A),
+                            color: AppColors.primary,
                             fontSize: 20,
                             fontWeight: FontWeight.w600,
                           ),
@@ -112,7 +113,7 @@ class _WalletPageState extends State<WalletPage> {
                           style: TextStyle(
                             fontSize: 32,
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF1E8B3A),
+                            color: AppColors.primary,
                           ),
                         ),
                       ],
@@ -123,11 +124,11 @@ class _WalletPageState extends State<WalletPage> {
               const SizedBox(height: 24),
               Container(
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: AppColors.cardBackground,
                   borderRadius: BorderRadius.circular(14),
                   boxShadow: const [
                     BoxShadow(
-                      color: Color(0x11000000),
+                      color: AppColors.shadow,
                       blurRadius: 10,
                       offset: Offset(0, 6),
                     ),
@@ -167,8 +168,8 @@ class _WalletPageState extends State<WalletPage> {
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
-        selectedItemColor: const Color(0xFF1E8B3A),
-        unselectedItemColor: Colors.grey,
+        selectedItemColor: AppColors.primary,
+        unselectedItemColor: AppColors.text.withOpacity(0.627),
         onTap: _onItemTapped,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
@@ -201,11 +202,11 @@ class _WalletPageState extends State<WalletPage> {
             width: 72,
             height: 72,
             decoration: BoxDecoration(
-              color: const Color(0xFFF2F8F2),
+              color: AppColors.primary.withOpacity(0.098),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFFE1EDE3)),
+              border: Border.all(color: AppColors.secondary),
             ),
-            child: Icon(icon, color: const Color(0xFF1E8B3A), size: 30),
+            child: Icon(icon, color: AppColors.primary, size: 30),
           ),
           const SizedBox(height: 12),
           Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),

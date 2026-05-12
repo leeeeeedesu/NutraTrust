@@ -6,7 +6,7 @@
       "$productId": {
         ".validate": "newData.hasChildren(['name', 'price', 'stock'])",
         "stock": {
-          ".write": "root.child('users').child(auth.uid).child('role').val() === 'admin' || (newData.val() <= data.val())",
+          ".write": "root.child('users').child(auth.uid).child('role').val() === 'admin' || (auth != null && newData.val() <= data.val())",
           ".validate": "newData.isNumber() && newData.val() >= 0"
         },
         "name": { ".validate": "newData.isString() && newData.val().length > 0" },
@@ -47,8 +47,8 @@
       }
     },
     "users": {
-      ".read": "root.child('users').child(auth.uid).child('role').val() === 'admin'",
-      ".write": "root.child('users').child(auth.uid).child('role').val() === 'admin'",
+      ".read": "auth != null",
+      ".write": "auth != null",
       "$uid": {
         ".read": "auth.uid === $uid || root.child('users').child(auth.uid).child('role').val() === 'admin'",
         ".write": "auth.uid === $uid || root.child('users').child(auth.uid).child('role').val() === 'admin'",
@@ -74,18 +74,18 @@
     },
     "customers": {
       ".read": "root.child('users').child(auth.uid).child('role').val() === 'admin'",
-      ".write": "auth != null || root.child('users').child(auth.uid).child('role').val() === 'admin'"
+      ".write": "root.child('users').child(auth.uid).child('role').val() === 'admin'"
     },
     "orders": {
+      ".read": "auth != null",
+      ".write": "false",
       "$orderId": {
-        ".read": "auth != null && (data.child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin')",
+        ".read": "data.child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin'",
         ".write": "auth != null && (newData.child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin')",
         ".validate": "newData.hasChildren(['userId','productId','quantity','totalPrice'])",
         "userId": { ".validate": "newData.isString()" },
         "productId": { ".validate": "newData.isString()" },
-        "quantity": { 
-          ".validate": "newData.isNumber() && newData.val() > 0 && newData.val() <= root.child('products').child(newData.parent.child('productId').val()).child('stock').val()"
-        },
+        "quantity": { ".validate": "newData.isNumber() && newData.val() > 0" },
         "totalPrice": { ".validate": "newData.isNumber() && newData.val() >= 0" },
         "status": { ".validate": "newData.isString() || !newData.exists()" },
         "reviewed": { ".validate": "newData.isBoolean()" },

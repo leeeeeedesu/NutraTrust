@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/app_theme.dart';
 
 class AppBottomNavigationBar extends StatelessWidget {
   final int currentIndex;
@@ -16,8 +17,8 @@ class AppBottomNavigationBar extends StatelessWidget {
 
     return BottomNavigationBar(
       currentIndex: currentIndex,
-      selectedItemColor: const Color(0xFF1E8B3A),
-      unselectedItemColor: Colors.grey,
+      selectedItemColor: AppColors.primary,
+      unselectedItemColor: AppColors.text.withOpacity(0.627),
       onTap: (index) {
         debugPrint('Bottom nav switching to index: $index');
         onTap(index);

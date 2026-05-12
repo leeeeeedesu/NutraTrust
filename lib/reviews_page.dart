@@ -102,9 +102,7 @@ class _ReviewsPageState extends State<ReviewsPage> {
           foregroundColor: const Color(0xFF1E8B3A),
           elevation: 0,
         ),
-        body: const Center(
-          child: Text('Please sign in to view your reviews.'),
-        ),
+        body: const Center(child: Text('Please sign in to view your reviews.')),
       );
     }
 
@@ -152,7 +150,9 @@ class _ReviewsPageState extends State<ReviewsPage> {
             ),
             const SizedBox(height: 12),
             StreamBuilder<List<Review>>(
-              stream: RealtimeDatabaseService.reviewsStreamForUser(currentUser.uid),
+              stream: RealtimeDatabaseService.reviewsStreamForUser(
+                currentUser.uid,
+              ),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());

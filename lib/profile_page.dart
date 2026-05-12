@@ -12,6 +12,7 @@ import 'account_settings.dart';
 import 'shipping_location.dart';
 import 'to_pay.dart';
 import 'wallet_page.dart';
+import 'utils/app_theme.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -27,10 +28,10 @@ class _ProfilePageState extends State<ProfilePage> {
   String _profileName = 'Profile Name';
   String _profileBio = 'Bio';
   String? _profileImageUrl;
-  String? _bannerImageUrl;
 
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _bioController = TextEditingController();
+
   @override
   void initState() {
     super.initState();
@@ -69,12 +70,10 @@ class _ProfilePageState extends State<ProfilePage> {
         : currentUser.email?.split('@').first ?? 'Profile Name';
     final loadedBio = accountData?['bio']?.toString() ?? 'Bio';
     final loadedProfileImage = images['profileImage'];
-    final loadedBannerImage = images['bannerImage'];
 
     debugPrint('Loaded name: $loadedName');
     debugPrint('Loaded bio: $loadedBio');
     debugPrint('Loaded profileImage: $loadedProfileImage');
-    debugPrint('Loaded bannerImage: $loadedBannerImage');
     debugPrint('Is admin: $isAdmin');
 
     if (!mounted) return;
@@ -83,7 +82,6 @@ class _ProfilePageState extends State<ProfilePage> {
       _profileName = loadedName;
       _profileBio = loadedBio;
       _profileImageUrl = loadedProfileImage;
-      _bannerImageUrl = loadedBannerImage;
       _nameController.text = _profileName;
       _bioController.text = _profileBio;
       _loadingProfile = false;
@@ -121,7 +119,6 @@ class _ProfilePageState extends State<ProfilePage> {
         );
         break;
       case 4: // Profile
-
         break;
       default:
         ScaffoldMessenger.of(context).showSnackBar(
@@ -130,178 +127,402 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("Profile"),
-        backgroundColor: const Color(0xFF028B22),
-        centerTitle: true,
+  Widget _buildProfileHeader() {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: const BorderRadius.only(
+          bottomLeft: Radius.circular(20),
+          bottomRight: Radius.circular(20),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.shadow,
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            // Banner image with edit button - only for non-admin users
-            if (!_isAdmin)
-              Stack(
-                children: [
-                  Container(
-                    height: 150,
-                    width: double.infinity,
-                    color: Colors.grey[300],
-                    child: _bannerImageUrl != null
-                        ? Image.network(
-                            _bannerImageUrl!,
-                            fit: BoxFit.cover,
-                            width: double.infinity,
-                            height: 150,
-                          )
-                        : const Center(child: Text("Choose you BG Picture")),
-                  ),
-                ],
-              ),
-
-            const SizedBox(height: 16),
-            // Profile image with edit button
-            Stack(
-              alignment: Alignment.bottomRight,
-              children: [
-                CircleAvatar(
-                  radius: 50,
-                  backgroundColor: Colors.green[200],
-                  backgroundImage: _profileImageUrl != null
-                      ? NetworkImage(_profileImageUrl!)
-                      : null,
-                  child: _profileImageUrl == null
-                      ? const Icon(Icons.person, size: 50, color: Colors.white)
-                      : null,
-                ),
-              ],
+      child: Column(
+        children: [
+          // Profile Avatar
+          Container(
+            width: 100,
+            height: 100,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: AppColors.primary.withValues(alpha: 0.1),
+              border: Border.all(color: AppColors.primary, width: 3),
             ),
-            const SizedBox(height: 12),
-            if (_loadingProfile)
-              const CircularProgressIndicator(color: Color(0xFF028B22))
-            else if (_isAdmin) ...[
-              // Admin profile - simplified view
-              const SizedBox(height: 12),
-              const Text(
-                'Admin Profile',
+            child: _profileImageUrl != null
+                ? ClipOval(
+                    child: Image.network(
+                      _profileImageUrl!,
+                      fit: BoxFit.cover,
+                      width: 100,
+                      height: 100,
+                    ),
+                  )
+                : Icon(Icons.person, size: 50, color: AppColors.primary),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Profile Info
+          if (_isAdmin) ...[
+            Text(
+              'Admin Profile',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: AppColors.text,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Administrator',
+              style: TextStyle(fontSize: 16, color: AppColors.text),
+            ),
+          ] else ...[
+            Text(
+              _profileName,
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: AppColors.text,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _profileBio,
+              style: TextStyle(fontSize: 16, color: AppColors.text),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMenuSections() {
+    if (_isAdmin) {
+      return Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16),
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.shadow,
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Admin Panel',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: AppColors.text,
+              ),
+            ),
+            const SizedBox(height: 16),
+            _buildMenuItem(
+              icon: Icons.admin_panel_settings,
+              title: 'Admin Dashboard',
+              subtitle: 'Manage products and orders',
+              onTap: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Admin dashboard coming soon')),
+                );
+              },
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      children: [
+        // Account Settings Section
+        Container(
+          margin: const EdgeInsets.symmetric(horizontal: 16),
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.shadow,
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Account',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF028B22),
+                  color: AppColors.text,
                 ),
               ),
-              const SizedBox(height: 24),
-            ] else ...[
-              // Regular user profile
-              Column(
+              const SizedBox(height: 16),
+              _buildMenuItem(
+                icon: Icons.settings,
+                title: 'Settings',
+                subtitle: 'Account preferences and privacy',
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const AccountSettingsPage(),
+                  ),
+                ),
+              ),
+              _buildMenuItem(
+                icon: Icons.location_on,
+                title: 'Shipping Location',
+                subtitle: 'Manage delivery addresses',
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const ShippingLocationPage(),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 16),
+
+        // Shopping Section
+        Container(
+          margin: const EdgeInsets.symmetric(horizontal: 16),
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.shadow,
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Shopping',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.text,
+                ),
+              ),
+              const SizedBox(height: 16),
+              _buildMenuItem(
+                icon: Icons.payment,
+                title: 'To Pay',
+                subtitle: 'Pending payments',
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const ToPayPage()),
+                ),
+              ),
+              _buildMenuItem(
+                icon: Icons.rate_review,
+                title: 'My Reviews',
+                subtitle: 'Product reviews and ratings',
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const ReviewsPage()),
+                ),
+              ),
+              _buildMenuItem(
+                icon: Icons.account_balance_wallet,
+                title: 'Wallet',
+                subtitle: 'Payment methods and balance',
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const WalletPage()),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMenuItem({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, color: AppColors.primary, size: 24),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    _profileName,
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
+                    title,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.text,
                     ),
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: TextStyle(fontSize: 14, color: AppColors.text),
+                  ),
                 ],
               ),
+            ),
+            Icon(Icons.arrow_forward_ios, size: 16, color: AppColors.text),
+          ],
+        ),
+      ),
+    );
+  }
 
-              const SizedBox(height: 24),
-              // Action buttons
-              ListTile(
-                leading: const Icon(Icons.settings, color: Colors.green),
-                title: const Text("Settings"),
-                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const AccountSettingsPage(),
-                    ),
+  Widget _buildAccountSection() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.shadow,
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Account Management',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: AppColors.text,
+            ),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () async {
+                await FirebaseAuth.instance.signOut();
+                CartService.clear();
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Logged out successfully')),
                   );
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.location_on, color: Colors.green),
-                title: const Text("Set your shipping Location"),
-                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const ShippingLocationPage(),
-                    ),
-                  );
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.payment, color: Colors.green),
-                title: const Text("To pay"),
-                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const ToPayPage()),
-                  );
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.rate_review, color: Colors.green),
-                title: const Text("Reviews"),
-                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const ReviewsPage()),
-                  );
-                },
-              ),
-              ListTile(
-                leading: const Icon(
-                  Icons.account_balance_wallet,
-                  color: Colors.green,
-                ),
-                title: const Text("Wallet"),
-                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const WalletPage()),
-                  );
-                },
-              ),
-
-              const SizedBox(height: 24),
-
-              // Log Out button
-              ElevatedButton(
-                onPressed: () {
-                  ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(const SnackBar(content: Text("Logged out")));
                   Navigator.pushAndRemoveUntil(
                     context,
                     MaterialPageRoute(builder: (_) => const LoginPage()),
                     (route) => false,
                   );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
-                  minimumSize: const Size(double.infinity, 50),
+                }
+              },
+              icon: const Icon(Icons.logout),
+              label: const Text('Log Out'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.error,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Text("Log Out"),
               ),
-            ],
-          ],
-        ),
+            ),
+          ),
+        ],
       ),
+    );
+  }
 
-      // Bottom navigation bar
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.secondary,
+      appBar: AppBar(
+        title: const Text('Profile'),
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.white,
+        elevation: 0,
+        actions: [
+          if (!_isAdmin)
+            IconButton(
+              onPressed: () {
+                // TODO: Implement profile editing
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Profile editing coming soon')),
+                );
+              },
+              icon: const Icon(Icons.edit),
+            ),
+        ],
+      ),
+      body: _loadingProfile
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+              child: Column(
+                children: [
+                  // Profile Header
+                  _buildProfileHeader(),
+
+                  const SizedBox(height: 24),
+
+                  // Menu Sections
+                  _buildMenuSections(),
+
+                  const SizedBox(height: 24),
+
+                  // Account Section
+                  _buildAccountSection(),
+
+                  const SizedBox(height: 32),
+                ],
+              ),
+            ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
-        selectedItemColor: const Color(0xFF1E8B3A),
+        selectedItemColor: AppColors.primary,
         unselectedItemColor: Colors.grey,
         onTap: _onItemTapped,
         items: [

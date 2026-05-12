@@ -22,10 +22,10 @@ class AdminSettingsPage extends StatefulWidget {
 
 class _AdminSettingsPageState extends State<AdminSettingsPage> {
   String? _profileImageUrl;
+  bool _loadingImages = true;
 
   final ImagePicker _imagePicker = ImagePicker();
   final CloudinaryService _cloudinaryService = CloudinaryService();
-  bool _loadingImages = true;
 
   @override
   void initState() {

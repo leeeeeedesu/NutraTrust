@@ -1,6 +1,10 @@
 import org.gradle.api.tasks.Delete
 import org.gradle.api.file.Directory
 
+plugins {
+    id("com.android.library") apply false
+}
+
 buildscript {
     repositories {
         google()
@@ -31,10 +35,6 @@ subprojects {
 
 subprojects {
     project.evaluationDependsOn(":app")
-}
-
-plugins {
-    id("com.android.library") apply false
 }
 
 tasks.register<Delete>("clean") {

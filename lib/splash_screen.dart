@@ -1,9 +1,13 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'utils/app_theme.dart';
 import 'admin/admin_dashboard.dart';
 import 'home_page.dart';
 import 'login_page.dart';
+import 'services/realtime_database_service.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -73,6 +77,10 @@ class _SplashScreenState extends State<SplashScreen>
     }
 
     try {
+      // Trigger orders migration in the background (no await needed)
+      debugPrint('SplashScreen: Triggering orders migration...');
+      unawaited(RealtimeDatabaseService.migrateOrdersUserId());
+
       final doc = await FirebaseFirestore.instance
           .collection('users')
           .doc(currentUser.uid)
@@ -131,7 +139,7 @@ class _SplashScreenState extends State<SplashScreen>
                   textAlign: TextAlign.center,
                   text: TextSpan(
                     style: const TextStyle(
-                      color: Colors.white,
+                      color: AppColors.cardBackground,
                       fontSize: 18,
                       fontWeight: FontWeight.w500,
                       height: 1.5,
@@ -142,7 +150,7 @@ class _SplashScreenState extends State<SplashScreen>
                       TextSpan(
                         text: "GAINS",
                         style: const TextStyle(
-                          color: Colors.brown,
+                          color: AppColors.text,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -150,7 +158,7 @@ class _SplashScreenState extends State<SplashScreen>
                       TextSpan(
                         text: "NATURE",
                         style: const TextStyle(
-                          color: Color(0xFF028B22),
+                          color: AppColors.primary,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
