@@ -28,18 +28,11 @@ Future<void> _ensureOrdersMigrated() async {
 
 class _TrackOrdersPageState extends State<TrackOrdersPage> {
   int _selectedIndex = 2;
-  bool _migrationRunning = false;
 
   @override
   void initState() {
     super.initState();
-    // Start migration without blocking UI
-    _migrationRunning = true;
-    _ensureOrdersMigrated().then((_) {
-      if (mounted) {
-        setState(() => _migrationRunning = false);
-      }
-    });
+    _ensureOrdersMigrated();
   }
 
   void _onItemTapped(int index) {
@@ -91,6 +84,8 @@ class _TrackOrdersPageState extends State<TrackOrdersPage> {
         return const Color(0xFFD32F2F); // red
       case 'pending':
         return const Color(0xFF1976D2); // blue
+      case 'paid':
+        return const Color(0xFF7B1FA2); // purple
       default:
         return Colors.grey;
     }
@@ -98,6 +93,7 @@ class _TrackOrdersPageState extends State<TrackOrdersPage> {
 
   static const List<String> _adminOrderStatuses = [
     'pending',
+    'paid',
     'in transit',
     'delivered',
     'cancelled',
@@ -116,6 +112,8 @@ class _TrackOrdersPageState extends State<TrackOrdersPage> {
         return 'Failed';
       case 'pending':
         return 'Pending';
+      case 'paid':
+        return 'Paid';
       default:
         return 'Pending';
     }
@@ -333,7 +331,7 @@ class _TrackOrdersPageState extends State<TrackOrdersPage> {
                             decoration: BoxDecoration(
                               color: _statusColor(
                                 order.status,
-                              ).withOpacity(0.16),
+                              ).withAlpha((0.16 * 255).round()),
                               borderRadius: BorderRadius.circular(24),
                             ),
                             child: Text(
@@ -446,43 +444,63 @@ class _TrackOrdersPageState extends State<TrackOrdersPage> {
                             child: const Text('Cancel Order'),
                           ),
                         ),
-                      ] else if (order.status.toLowerCase() == 'delivered') ...[
-                        FutureBuilder<bool>(
-                          future: _canWriteReview(order),
-                          builder: (context, reviewSnapshot) {
-                            if (reviewSnapshot.connectionState ==
-                                ConnectionState.waiting) {
-                              return const Padding(
-                                padding: EdgeInsets.symmetric(vertical: 12),
-                                child: Center(
-                                  child: CircularProgressIndicator(),
+                      ] else if (order.status.toLowerCase() == 'paid') ...[
+                        if (!order.reviewed)
+                          FutureBuilder<bool>(
+                            future: _canWriteReview(order),
+                            builder: (context, reviewSnapshot) {
+                              if (reviewSnapshot.connectionState ==
+                                  ConnectionState.waiting) {
+                                return const Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 12),
+                                  child: Center(
+                                    child: CircularProgressIndicator(),
+                                  ),
+                                );
+                              }
+                              if (reviewSnapshot.hasError ||
+                                  reviewSnapshot.data != true) {
+                                return const SizedBox.shrink();
+                              }
+
+                              return SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton(
+                                  onPressed: () => _navigateToReview(
+                                    order.id,
+                                    order.productId,
+                                    order.productName,
+                                  ),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF028B22),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                  ),
+                                  child: const Text('Write a Review'),
                                 ),
                               );
-                            }
-                            if (reviewSnapshot.hasError ||
-                                reviewSnapshot.data != true) {
-                              return const SizedBox.shrink();
-                            }
-
-                            return SizedBox(
-                              width: double.infinity,
-                              child: ElevatedButton(
-                                onPressed: () => _navigateToReview(
-                                  order.id,
-                                  order.productId,
-                                  order.productName,
-                                ),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFF028B22),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                ),
-                                child: const Text('Write a Review'),
+                            },
+                          )
+                        else
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 12,
+                              horizontal: 16,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.grey[200],
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Text(
+                              'Review already submitted',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: Colors.grey,
+                                fontWeight: FontWeight.w600,
                               ),
-                            );
-                          },
-                        ),
+                            ),
+                          ),
                       ],
                     ],
                   ),
@@ -496,6 +514,13 @@ class _TrackOrdersPageState extends State<TrackOrdersPage> {
   }
 
   Future<bool> _canWriteReview(Order order) async {
+    if (order.status.toLowerCase() != 'paid') {
+      debugPrint(
+        'TrackOrdersPage _canWriteReview: order ${order.id} status is not paid',
+      );
+      return false;
+    }
+
     if (order.reviewed) {
       debugPrint(
         'TrackOrdersPage _canWriteReview: order ${order.id} already marked reviewed',

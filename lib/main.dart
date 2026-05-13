@@ -20,13 +20,6 @@ Future<void> main() async {
   } else {
     debugPrint('Auth domain: not configured in Firebase options');
   }
-  const authorizedDomains = [
-    'localhost',
-    '127.0.0.1',
-    'firebaseapp.com',
-    'web.app',
-    'ngrok.io',
-  ];
   debugPrint('Auth domain: ${Firebase.app().options.authDomain}');
 
   // Activate App Check using debug providers in development builds.

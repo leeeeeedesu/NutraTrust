@@ -213,9 +213,11 @@ class _ToPayPageState extends State<ToPayPage> {
                                     final messenger = ScaffoldMessenger.of(
                                       context,
                                     );
-                                    await RealtimeDatabaseService.updateOrderStatus(
+                                    debugPrint(
+                                      'Marking order as paid: ${order.id}',
+                                    );
+                                    await RealtimeDatabaseService.markOrderAsPaid(
                                       order.id,
-                                      'Paid',
                                     );
                                     if (!mounted) return;
                                     messenger.showSnackBar(
@@ -247,6 +249,7 @@ class _ToPayPageState extends State<ToPayPage> {
         selectedItemColor: const Color(0xFF1E8B3A),
         unselectedItemColor: Colors.grey,
         onTap: _onItemTapped,
+
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
           BottomNavigationBarItem(icon: Icon(Icons.favorite), label: 'Likes'),

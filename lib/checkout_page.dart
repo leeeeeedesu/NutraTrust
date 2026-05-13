@@ -247,8 +247,55 @@ class _CheckoutPageState extends State<CheckoutPage> {
     setState(() => _isProcessing = true);
 
     try {
-      // Create order(s) for each cart item and decrement stock.
+      // Check stock for all items before proceeding
       for (final item in items) {
+        final currentStock = await RealtimeDatabaseService.getProductStock(
+          item.product.id,
+        );
+        if (currentStock == 0) {
+          if (!mounted) return;
+          setState(() => _isProcessing = false);
+          messenger.showSnackBar(
+            SnackBar(
+              content: Text('${item.product.name} is out of stock'),
+              backgroundColor: AppColors.accent,
+            ),
+          );
+          return;
+        }
+        if (item.quantity > currentStock) {
+          if (!mounted) return;
+          setState(() => _isProcessing = false);
+          messenger.showSnackBar(
+            SnackBar(
+              content: Text(
+                'Only $currentStock ${item.product.name} available',
+              ),
+              backgroundColor: AppColors.accent,
+            ),
+          );
+          return;
+        }
+      }
+
+      // Create order for each cart item and decrement stock.
+      for (final item in items) {
+        final currentStock = await RealtimeDatabaseService.getProductStock(
+          item.product.id,
+        );
+
+        // If quantity equals current stock, decrement immediately to 0
+        if (item.quantity == currentStock) {
+          final decrementSuccess =
+              await RealtimeDatabaseService.decrementProductStock(
+                item.product.id,
+                item.quantity,
+              );
+          if (!decrementSuccess) {
+            throw Exception('Failed to update stock for ${item.product.id}');
+          }
+        }
+
         final success = await RealtimeDatabaseService.createOrder(
           productId: item.product.id,
           productName: item.product.name,
@@ -265,6 +312,18 @@ class _CheckoutPageState extends State<CheckoutPage> {
         if (!success) {
           throw Exception('Failed to create order for ${item.product.id}');
         }
+
+        // Decrement stock after order creation
+        if (item.quantity != currentStock) {
+          final decrementSuccess =
+              await RealtimeDatabaseService.decrementProductStock(
+                item.product.id,
+                item.quantity,
+              );
+          if (!decrementSuccess) {
+            throw Exception('Failed to update stock for ${item.product.id}');
+          }
+        }
       }
 
       debugPrint('Order placed, stock updated');
@@ -279,7 +338,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
         debugPrint('Voucher applied: ${_voucherController.text.trim()}');
       }
 
-      // Remove only checked items or clear full cart if no preview selection
+      // Remove only checked items
       if (previewItems == null) {
         CartService.clear();
       } else {

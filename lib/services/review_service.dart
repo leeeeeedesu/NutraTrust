@@ -3,7 +3,7 @@ import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/foundation.dart';
 import 'realtime_database_service.dart';
 
-/// Review Service - Restricts reviews to delivered orders only
+/// Review Service - Restricts reviews to paid orders only
 class ReviewService {
   static FirebaseDatabase get _database => FirebaseDatabase.instanceFor(
     app: FirebaseAuth.instance.app,
@@ -13,7 +13,7 @@ class ReviewService {
   static DatabaseReference get reviewsRef => _database.ref('reviews');
   static DatabaseReference get ordersRef => _database.ref('orders');
 
-  /// Create a review only if the order has been delivered
+  /// Create a review only if the order has been paid
   /// Returns true if review was saved successfully
   static Future<bool> createReviewForDeliveredOrder({
     required String orderId,
@@ -76,14 +76,14 @@ class ReviewService {
         throw Exception('This order has already been reviewed.');
       }
 
-      // Verify order status is "delivered"
-      if (orderStatus != 'delivered') {
+      // Verify order status is "paid"
+      if (orderStatus != 'paid') {
         debugPrint(
           'ReviewService.createReviewForDeliveredOrder RESTRICTION: '
-          'Order status is "$orderStatus", review only allowed for "delivered"',
+          'Order status is "$orderStatus", review only allowed for "paid"',
         );
         throw Exception(
-          'You can only review orders that have been delivered. Current status: $orderStatus',
+          'You can only review orders that have been paid. Current status: $orderStatus',
         );
       }
 
@@ -123,8 +123,8 @@ class ReviewService {
     }
   }
 
-  /// Get delivered orders for current user that contain the specified productId
-  static Future<List<Map<String, dynamic>>> getDeliveredOrdersForProduct(
+  /// Get paid orders for current user that contain the specified productId
+  static Future<List<Map<String, dynamic>>> getPaidOrdersForProduct(
     String productId,
   ) async {
     final currentUser = FirebaseAuth.instance.currentUser;
@@ -133,8 +133,8 @@ class ReviewService {
     }
 
     debugPrint(
-      'ReviewService.getDeliveredOrdersForProduct: '
-      'Fetching delivered orders for productId=$productId uid=${currentUser.uid}',
+      'ReviewService.getPaidOrdersForProduct: '
+      'Fetching paid orders for productId=$productId uid=${currentUser.uid}',
     );
 
     try {
@@ -145,12 +145,12 @@ class ReviewService {
 
       if (!ordersSnapshot.exists) {
         debugPrint(
-          'ReviewService.getDeliveredOrdersForProduct: No orders found for uid=${currentUser.uid}',
+          'ReviewService.getPaidOrdersForProduct: No orders found for uid=${currentUser.uid}',
         );
         return [];
       }
 
-      final deliveredOrders = <Map<String, dynamic>>[];
+      final paidOrders = <Map<String, dynamic>>[];
       final value = ordersSnapshot.value;
 
       if (value is Map) {
@@ -161,26 +161,26 @@ class ReviewService {
             final orderStatus =
                 orderMap['status']?.toString().toLowerCase() ?? '';
 
-            if (orderProductId == productId && orderStatus == 'delivered') {
+            if (orderProductId == productId && orderStatus == 'paid') {
               final orderId = key.toString();
               debugPrint(
-                'ReviewService.getDeliveredOrdersForProduct: '
-                'Found delivered order orderId=$orderId for productId=$productId',
+                'ReviewService.getPaidOrdersForProduct: '
+                'Found paid order orderId=$orderId for productId=$productId',
               );
-              deliveredOrders.add({'orderId': orderId, ...orderMap});
+              paidOrders.add({'orderId': orderId, ...orderMap});
             }
           }
         });
       }
 
       debugPrint(
-        'ReviewService.getDeliveredOrdersForProduct: '
-        'Found ${deliveredOrders.length} delivered orders for productId=$productId',
+        'ReviewService.getPaidOrdersForProduct: '
+        'Found ${paidOrders.length} paid orders for productId=$productId',
       );
 
-      return deliveredOrders;
+      return paidOrders;
     } catch (e) {
-      debugPrint('ReviewService.getDeliveredOrdersForProduct ERROR: $e');
+      debugPrint('ReviewService.getPaidOrdersForProduct ERROR: $e');
       return [];
     }
   }

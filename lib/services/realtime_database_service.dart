@@ -1045,7 +1045,23 @@ class RealtimeDatabaseService {
     String orderId,
     String newStatus,
   ) async {
-    await ordersRef.child(orderId).update({'status': newStatus});
+    final updates = <String, dynamic>{'status': newStatus};
+    if (newStatus.toLowerCase() == 'paid') {
+      updates['reviewed'] = false;
+      debugPrint('Marking order as paid via updateOrderStatus: $orderId');
+    }
+    await ordersRef.child(orderId).update(updates);
+  }
+
+  /// Mark order as paid and enable review capability
+  /// Sets status to 'paid' and reviewed to false so customer can write a review
+  static Future<void> markOrderAsPaid(String orderId) async {
+    debugPrint('Marking order as paid: $orderId');
+    await ordersRef.child(orderId).update({
+      'status': 'paid',
+      'reviewed': false,
+    });
+    debugPrint('Order marked paid, review available: $orderId');
   }
 }
 

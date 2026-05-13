@@ -228,7 +228,6 @@ class _AccountSecurityPageState extends State<AccountSecurityPage> {
   bool _saving = false;
   StreamSubscription<Map<String, dynamic>?>? _profileSubscription;
   String? _profileImageUrl;
-  String? _bannerImageUrl;
   final ImagePicker _imagePicker = ImagePicker();
   final CloudinaryService _cloudinaryService = CloudinaryService();
 
@@ -283,7 +282,7 @@ class _AccountSecurityPageState extends State<AccountSecurityPage> {
         _nameController.text = fetchedEmail.split('@').first;
         _bioController.text = '';
         _profileImageUrl = null;
-        _bannerImageUrl = null;
+
         return;
       }
 
@@ -309,7 +308,6 @@ class _AccountSecurityPageState extends State<AccountSecurityPage> {
       _bioController.text = loadedBio;
       _emailController.text = loadedEmail;
       _profileImageUrl = loadedProfileImage;
-      _bannerImageUrl = loadedBannerImage;
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(
@@ -464,7 +462,6 @@ class _AccountSecurityPageState extends State<AccountSecurityPage> {
               _bioController.text = loadedBio;
               _emailController.text = loadedEmail;
               _profileImageUrl = loadedProfileImage;
-              _bannerImageUrl = loadedBannerImage;
             });
           },
           onError: (e) {

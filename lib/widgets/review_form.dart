@@ -36,7 +36,7 @@ class _ReviewFormState extends State<ReviewForm> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'Order information is required. Please use Track Orders to write a review for a delivered order.',
+            'Order information is required. Please use Track Orders to write a review for a paid order.',
           ),
         ),
       );

@@ -21,7 +21,7 @@ class ViewProductPage extends StatefulWidget {
 class _ViewProductPageState extends State<ViewProductPage> {
   String selectedFlavor = '';
   int quantity = 1;
-  List<Map<String, dynamic>> deliveredOrders = [];
+  List<Map<String, dynamic>> paidOrders = [];
   bool isLoadingOrders = false;
   int _selectedIndex = 0; // Add this for bottom navigation
 
@@ -31,7 +31,7 @@ class _ViewProductPageState extends State<ViewProductPage> {
     if (widget.product.flavors.isNotEmpty) {
       selectedFlavor = widget.product.flavors[0];
     }
-    _loadDeliveredOrders();
+    _loadPaidOrders();
   }
 
   void _onItemTapped(int index) {
@@ -77,18 +77,18 @@ class _ViewProductPageState extends State<ViewProductPage> {
     }
   }
 
-  Future<void> _loadDeliveredOrders() async {
+  Future<void> _loadPaidOrders() async {
     setState(() => isLoadingOrders = true);
     try {
-      final orders = await ReviewService.getDeliveredOrdersForProduct(
+      final orders = await ReviewService.getPaidOrdersForProduct(
         widget.product.id,
       );
-      setState(() => deliveredOrders = orders);
+      setState(() => paidOrders = orders);
       debugPrint(
-        'ViewProductPage: Loaded ${orders.length} delivered orders for productId=${widget.product.id}',
+        'ViewProductPage: Loaded ${orders.length} paid orders for productId=${widget.product.id}',
       );
     } catch (e) {
-      debugPrint('ViewProductPage._loadDeliveredOrders ERROR: $e');
+      debugPrint('ViewProductPage._loadPaidOrders ERROR: $e');
     } finally {
       setState(() => isLoadingOrders = false);
     }
@@ -447,44 +447,62 @@ class _ViewProductPageState extends State<ViewProductPage> {
                         Expanded(
                           child: OutlinedButton(
                             style: OutlinedButton.styleFrom(
-                              side: const BorderSide(color: Colors.green),
+                              side: BorderSide(
+                                color: widget.product.stock == 0
+                                    ? Colors.grey
+                                    : Colors.green,
+                              ),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               padding: const EdgeInsets.symmetric(vertical: 14),
                             ),
-                            onPressed: () async {
-                              if (panelQuantity > widget.product.stock) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                      'Only ${widget.product.stock} items available',
-                                    ),
-                                  ),
-                                );
-                                return;
-                              }
-                              setState(() {
-                                selectedFlavor = panelFlavor;
-                                quantity = panelQuantity;
-                              });
-                              await CartService.addItem(
-                                product: widget.product,
-                                size: 'standard',
-                                flavor: panelFlavor.isNotEmpty
-                                    ? panelFlavor
-                                    : 'default',
-                                quantity: panelQuantity,
-                              );
-                              if (!mounted) return;
-                              Navigator.of(context).pop();
-                              ScaffoldMessenger.of(this.context).showSnackBar(
-                                const SnackBar(content: Text('Added to cart')),
-                              );
-                            },
-                            child: const Text(
-                              'Add to cart',
-                              style: TextStyle(color: Colors.green),
+                            onPressed: widget.product.stock == 0
+                                ? null
+                                : () async {
+                                    if (panelQuantity > widget.product.stock) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            'Only ${widget.product.stock} items available',
+                                          ),
+                                        ),
+                                      );
+                                      return;
+                                    }
+                                    setState(() {
+                                      selectedFlavor = panelFlavor;
+                                      quantity = panelQuantity;
+                                    });
+                                    await CartService.addItem(
+                                      product: widget.product,
+                                      size: 'standard',
+                                      flavor: panelFlavor.isNotEmpty
+                                          ? panelFlavor
+                                          : 'default',
+                                      quantity: panelQuantity,
+                                    );
+                                    if (!mounted) return;
+                                    Navigator.of(context).pop();
+                                    ScaffoldMessenger.of(
+                                      this.context,
+                                    ).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Added to cart'),
+                                      ),
+                                    );
+                                  },
+                            child: Text(
+                              widget.product.stock == 0
+                                  ? 'Out of Stock'
+                                  : 'Add to cart',
+                              style: TextStyle(
+                                color: widget.product.stock == 0
+                                    ? Colors.grey
+                                    : Colors.green,
+                              ),
                             ),
                           ),
                         ),
@@ -492,45 +510,56 @@ class _ViewProductPageState extends State<ViewProductPage> {
                         Expanded(
                           child: ElevatedButton(
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF1B5E20),
+                              backgroundColor: widget.product.stock == 0
+                                  ? Colors.grey
+                                  : const Color(0xFF1B5E20),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               padding: const EdgeInsets.symmetric(vertical: 14),
                             ),
-                            onPressed: () {
-                              if (panelQuantity > widget.product.stock) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                      'Only ${widget.product.stock} items available',
-                                    ),
-                                  ),
-                                );
-                                return;
-                              }
-                              setState(() {
-                                selectedFlavor = panelFlavor;
-                                quantity = panelQuantity;
-                              });
-                              final previewItem = CartItem(
-                                product: widget.product,
-                                size: 'standard',
-                                flavor: panelFlavor.isNotEmpty
-                                    ? panelFlavor
-                                    : 'default',
-                                quantity: panelQuantity,
-                              );
-                              Navigator.of(context).pop();
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) =>
-                                      CheckoutPage(previewItems: [previewItem]),
-                                ),
-                              );
-                            },
-                            child: const Text('Buy now'),
+                            onPressed: widget.product.stock == 0
+                                ? null
+                                : () {
+                                    if (panelQuantity > widget.product.stock) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            'Only ${widget.product.stock} items available',
+                                          ),
+                                        ),
+                                      );
+                                      return;
+                                    }
+                                    setState(() {
+                                      selectedFlavor = panelFlavor;
+                                      quantity = panelQuantity;
+                                    });
+                                    final previewItem = CartItem(
+                                      product: widget.product,
+                                      size: 'standard',
+                                      flavor: panelFlavor.isNotEmpty
+                                          ? panelFlavor
+                                          : 'default',
+                                      quantity: panelQuantity,
+                                    );
+                                    Navigator.of(context).pop();
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => CheckoutPage(
+                                          previewItems: [previewItem],
+                                        ),
+                                      ),
+                                    );
+                                  },
+                            child: Text(
+                              widget.product.stock == 0
+                                  ? 'Out of Stock'
+                                  : 'Buy now',
+                            ),
                           ),
                         ),
                       ],
@@ -665,14 +694,20 @@ class _ViewProductPageState extends State<ViewProductPage> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: AppColors.accent,
+                  color: widget.product.stock == 0
+                      ? Colors.red
+                      : AppColors.accent,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
-                  '${widget.product.stock} in stock',
-                  style: const TextStyle(
+                  widget.product.stock == 0
+                      ? 'Out of Stock'
+                      : '${widget.product.stock} in stock',
+                  style: TextStyle(
                     fontSize: 12,
-                    color: AppColors.primary,
+                    color: widget.product.stock == 0
+                        ? Colors.white
+                        : AppColors.primary,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -818,7 +853,7 @@ class _ViewProductPageState extends State<ViewProductPage> {
       );
     }
 
-    if (deliveredOrders.isEmpty) {
+    if (paidOrders.isEmpty) {
       return const SizedBox.shrink();
     }
 
@@ -833,7 +868,7 @@ class _ViewProductPageState extends State<ViewProductPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'You have ${deliveredOrders.length} delivered order(s)',
+            'You have ${paidOrders.length} paid order(s)',
             style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
@@ -848,7 +883,7 @@ class _ViewProductPageState extends State<ViewProductPage> {
           const SizedBox(height: 16),
           ElevatedButton.icon(
             onPressed: () =>
-                _showReviewDialog(deliveredOrders.first['orderId'].toString()),
+                _showReviewDialog(paidOrders.first['orderId'].toString()),
             icon: const Icon(Icons.rate_review),
             label: const Text('Write a Review'),
             style: ElevatedButton.styleFrom(
@@ -900,6 +935,7 @@ class _ViewProductPageState extends State<ViewProductPage> {
   }
 
   Widget _buildStickyActionButtons() {
+    final isOutOfStock = widget.product.stock == 0;
     return Positioned(
       bottom: 80, // Above bottom navigation
       left: 20,
@@ -921,35 +957,47 @@ class _ViewProductPageState extends State<ViewProductPage> {
           children: [
             Expanded(
               child: ElevatedButton(
-                onPressed: _showProductActionPanel,
+                onPressed: isOutOfStock ? null : _showProductActionPanel,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
+                  backgroundColor: isOutOfStock
+                      ? Colors.grey
+                      : AppColors.primary,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                   padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
-                child: const Text(
-                  'Add to Cart',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                child: Text(
+                  isOutOfStock ? 'Out of Stock' : 'Add to Cart',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: ElevatedButton(
-                onPressed: _showProductActionPanel,
+                onPressed: isOutOfStock ? null : _showProductActionPanel,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.accent,
-                  foregroundColor: AppColors.primary,
+                  backgroundColor: isOutOfStock
+                      ? Colors.grey
+                      : AppColors.accent,
+                  foregroundColor: isOutOfStock
+                      ? Colors.white
+                      : AppColors.primary,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                   padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
-                child: const Text(
-                  'Buy Now',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                child: Text(
+                  isOutOfStock ? 'Out of Stock' : 'Buy Now',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ),

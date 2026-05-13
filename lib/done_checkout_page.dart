@@ -21,7 +21,7 @@ class DoneCheckoutPage extends StatelessWidget {
                 ),
               ),
             ),
-            // Main content
+
             Expanded(
               child: Center(
                 child: Column(
